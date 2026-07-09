@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>길드 홀 — cc-dashboard (프로토타입)</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+        background: #17131f;
+        font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+      }
+      #scene {
+        display: block;
+        image-rendering: pixelated;
+      }
+      #tip {
+        position: fixed;
+        display: none;
+        max-width: 300px;
+        background: #0f0b17;
+        border: 2px solid #6b4fa0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        color: #e8e4f2;
+        font-size: 12px;
+        line-height: 1.5;
+        pointer-events: none;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        z-index: 10;
+      }
+      #tip .t-name {
+        font-weight: 700;
+        color: #ffd479;
+        margin-bottom: 3px;
+      }
+      #tip .t-job {
+        color: #c8a2ff;
+        font-weight: 700;
+      }
+      #tip .t-role {
+        color: #9ad;
+      }
+      #tip .t-msg {
+        color: #c7c1d8;
+        margin-top: 4px;
+        white-space: pre-wrap;
+      }
+      #tip .t-hint {
+        color: #7a7488;
+        margin-top: 6px;
+        font-size: 11px;
+      }
+      #hud {
+        position: fixed;
+        top: 10px;
+        right: 14px;
+        color: #cfc7e0;
+        font-size: 12px;
+        text-align: right;
+        z-index: 5;
+        text-shadow: 0 1px 2px #000;
+      }
+      #hud a {
+        color: #9ad;
+      }
+      #conn {
+        color: #7ee0a0;
+      }
+      #conn.off {
+        color: #e07a7a;
+      }
+      /* 전직 메뉴 */
+      #jobmenu {
+        position: fixed;
+        display: none;
+        background: #140f1f;
+        border: 2px solid #7b5fd0;
+        border-radius: 10px;
+        padding: 8px;
+        z-index: 20;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+        min-width: 172px;
+      }
+      #jobmenu .jm-head {
+        color: #ffd479;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 2px 6px 8px;
+        border-bottom: 1px solid #2c2440;
+        margin-bottom: 6px;
+      }
+      #jobmenu button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        text-align: left;
+        background: none;
+        border: none;
+        color: #e0dbef;
+        font: inherit;
+        font-size: 12px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      #jobmenu button:hover {
+        background: #2a2140;
+        color: #fff;
+      }
+      #jobmenu .jm-auto {
+        color: #9ad;
+        border-top: 1px solid #2c2440;
+        margin-top: 4px;
+        padding-top: 8px;
+      }
+      #jobmenu .sw {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        flex: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+    <div id="tip"></div>
+    <div id="jobmenu"></div>
+    <div id="hud">
+      <div>🏰 <b>길드 홀</b> — 일하는 길드원 (프로토타입)</div>
+      <div>연결: <span id="conn">…</span> · <span id="count">0</span>명 · <a href="/">← 대시보드</a></div>
+      <div style="opacity: 0.7; margin-top: 2px">캐릭터 클릭 → <b>전직</b> · 토큰 쌓이면 <b>레벨업</b></div>
+    </div>
+
+    <script>
+      // ── 라이브 데이터: 대시보드 서버 SSE에 그대로 붙음 ───────────────────────
+      const API = location.protocol + '//' + location.hostname + ':7317';
+      const connEl = document.getElementById('conn');
+      const countEl = document.getElementById('count');
+      let agents = [];
+
+      const DEMO = [
+        { id: 'd1', name: '백엔드 코드 pull', kind: 'claude', state: 'working', project: '/Project/api', lastMessage: '리포 최신화 중…', tokens: { context: 90000, window: 258000 } },
+        { id: 'd2', name: '카드 토글 구현', kind: 'codex', state: 'working', project: '/dev/cc-dashboard', lastMessage: 'App.vue 수정', tokens: { context: 40000, window: 258000 } },
+        { id: 'd3', name: '권한 확인', kind: 'claude', state: 'needs_input', project: '/dev/daily', lastMessage: '왜 안 뜨지?', tokens: { context: 168000, window: 258000 }, subagents: [{}, {}] },
+        { id: 'd4', name: 'page-scraper', kind: 'codex', state: 'idle', project: '/dev/page-scraper', lastMessage: '', tokens: { context: 12000, window: 258000 } },
+        { id: 'd5', name: '핸드오프', kind: 'codex', state: 'working', project: '/CodexPets', lastMessage: '', tokens: { context: 60000, window: 258000 }, aiHandoff: 'READY_FOR_CODEX' },
+        { id: 'd6', name: 'PR 리뷰', kind: 'claude', state: 'working', project: '/Project/web', lastMessage: '', tokens: { context: 30000, window: 258000 }, pr: '#42', branch: 'feat/x' },
+      ];
+
+      function connectSSE() {
+        try {
+          const es = new EventSource(API + '/api/agents/stream');
+          es.onmessage = (e) => {
+            try {
+              const list = JSON.parse(e.data);
+              if (Array.isArray(list)) {
+                agents = list;
+                connEl.textContent = '온라인';
+                connEl.className = '';
+                layout();
+              }
+            } catch {}
+          };
+          es.onerror = () => {
+            connEl.textContent = '데모(오프라인)';
+            connEl.className = 'off';
+            if (!agents.length) {
+              agents = DEMO;
+              layout();
+            }
+          };
+        } catch {
+          agents = DEMO;
+          layout();
+        }
+      }
+
+      // ── 색 유틸 ──────────────────────────────────────────────────────────
+      function hexToRgb(h) {
+        h = h.replace('#', '');
+        if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+        return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+      }
+      function rgbToHex(r, g, b) {
+        const c = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
+        return '#' + c(r) + c(g) + c(b);
+      }
+      function darken(hex, f) {
+        const [r, g, b] = hexToRgb(hex);
+        return rgbToHex(r * f, g * f, b * f);
+      }
+      function lighten(hex, f) {
+        const [r, g, b] = hexToRgb(hex);
+        return rgbToHex(r + (255 - r) * f, g + (255 - g) * f, b + (255 - b) * f);
+      }
+      function desat(hex, amt) {
+        const [r, g, b] = hexToRgb(hex);
+        const gray = 0.3 * r + 0.59 * g + 0.11 * b;
+        return rgbToHex(r + (gray - r) * amt, g + (gray - g) * amt, b + (gray - b) * amt);
+      }
+
+      // ── 직업 정의 (베이스 스프라이트 + 색 + 무기 + 오라) ──────────────────
+      // base: 'mage'(Claude 계열) / 'warrior'(Codex 계열)
+      const CLASSES = {
+        apprentice_mage: { name: '견습 마법사', base: 'mage', main: '#5aa0d0', robe: '#4a6ba0', weapon: 'staff', line: 'claude' },
+        mage: { name: '마법사', base: 'mage', main: '#6b3fa0', robe: '#7b5fd0', weapon: 'staff', line: 'claude' },
+        archmage: { name: '대마법사', base: 'mage', main: '#a03fb0', robe: '#9b3fd0', weapon: 'staff', aura: '#e0a0ff', line: 'claude' },
+        summoner: { name: '소환사', base: 'mage', main: '#2f9f8f', robe: '#3aa877', weapon: 'orb', aura: '#8fe0d0', line: 'claude' },
+        sage: { name: '현자', base: 'mage', main: '#c0a040', robe: '#8a7a40', weapon: 'book', line: 'claude' },
+        recruit: { name: '견습병', base: 'warrior', main: '#7a8088', robe: '#6a7a6a', weapon: 'sword', line: 'codex' },
+        warrior: { name: '전사', base: 'warrior', main: '#37b3c9', robe: '#37a877', weapon: 'sword', line: 'codex' },
+        knight: { name: '기사', base: 'warrior', main: '#c9c9d6', robe: '#8a9ab0', weapon: 'sword', aura: '#cfe0ff', line: 'codex' },
+        smith: { name: '대장장이', base: 'warrior', main: '#c98a3a', robe: '#a8683a', weapon: 'hammer', line: 'codex' },
+        berserker: { name: '광전사', base: 'warrior', main: '#c93a3a', robe: '#a83a3a', weapon: 'axe', aura: '#ff9a7a', line: 'codex' },
+        courier: { name: '전령', base: 'mage', main: '#d0b040', robe: '#c8a83a', weapon: 'scroll', line: 'any' },
+      };
+      const CLAUDE_JOBS = ['apprentice_mage', 'mage', 'archmage', 'summoner', 'sage', 'courier'];
+      const CODEX_JOBS = ['recruit', 'warrior', 'knight', 'smith', 'berserker', 'courier'];
+
+      function autoClass(a) {
+        if (a.aiHandoff && /READY|RUNNING/.test(a.aiHandoff)) return 'courier';
+        const ctx = (a.tokens && a.tokens.context) || 0;
+        const subs = (a.subagents || []).length;
+        if (a.kind === 'codex') {
+          if (subs >= 1) return 'knight';
+          if (a.pr || a.branch) return 'smith';
+          if (ctx > 150000) return 'berserker';
+          if (ctx > 40000) return 'warrior';
+          return 'recruit';
+        }
+        if (subs >= 1) return 'summoner';
+        if (a.pr || a.branch) return 'sage';
+        if (ctx > 150000) return 'archmage';
+        if (ctx > 40000) return 'mage';
+        return 'apprentice_mage';
+      }
+
+      const jobOverride = JSON.parse(localStorage.getItem('cc.guild.jobs') || '{}');
+      function classKeyOf(a) {
+        return jobOverride[a.id] || autoClass(a);
+      }
+      function levelOf(a) {
+        const ctx = (a.tokens && a.tokens.context) || 0;
+        const subs = (a.subagents || []).length;
+        return 1 + Math.floor(ctx / 25000) + subs + (a.pr ? 1 : 0);
+      }
+
+      // ── 픽셀 스프라이트 (치비 16x18, 아웃라인+음영) ───────────────────────
+      // 문자: .투명 O아웃라인 H주색 h주색그늘 F피부 f피부그늘 b볼홍조 E눈 e눈광
+      //       R로브/갑옷 r로브그늘 W하이라이트 P깃털 V바이저 B부츠
+      const MAGE = [
+        '......OOOO......',
+        '.....OHHHHO.....',
+        '.....OHHHhO.....',
+        '....OHHHHHhO....',
+        '....OHHHHHhhO...',
+        '...OHHHHHHHhO...',
+        '..OOOOOOOOOOOO..',
+        '..OWWWWWWWWWWO..',
+        '...OOOOOOOOOO...',
+        '....OFFFFFFO....',
+        '...OFFFFFFFFO...',
+        '...OFEEFFEEFO...',
+        '...ObFffffFbO...',
+        '....OFFFFFFO....',
+        '...ORRRRRRRRO...',
+        '..ORRRRWWRRRRO..',
+        '..ORRRRRRRRRRO..',
+        '..OrRO....ORrO..',
+      ];
+      const WARRIOR = [
+        '.......PP.......',
+        '......OPPO......',
+        '.....OHHHHO.....',
+        '....OHHHHHHO....',
+        '...OHHHHHHHHO...',
+        '...OHHHHHHHHO...',
+        '...OVeVVVVeVO...',
+        '...OHHHHHHHHO...',
+        '....OFFFFFFO....',
+        '....OFffffFO....',
+        '...ORRRRRRRRO...',
+        '..ORRRRRRRRRRO..',
+        '..ORRRWWWWRRRO..',
+        '..ORRRRRRRRRRO..',
+        '..ORRRRRRRRRRO..',
+        '..OBBO....OBBO..',
+        '..OBBO....OBBO..',
+        '..OBBO....OBBO..',
+      ];
+      function paletteFor(cls, dim) {
+        let main = cls.main,
+          robe = cls.robe;
+        if (dim) {
+          main = desat(main, 0.72);
+          robe = desat(robe, 0.72);
+        }
+        return {
+          O: '#1b1526',
+          H: main, h: darken(main, 0.66), P: lighten(main, 0.4),
+          F: dim ? '#c9bcc0' : '#f8d3ac', f: dim ? '#a99ca0' : '#e0ac80', b: dim ? '#c9bcc0' : '#f4a7b0',
+          E: '#2a2130', e: dim ? '#8a95a0' : '#8fe6ff',
+          R: robe, r: darken(robe, 0.66), W: '#fff6ff', V: '#182c34', B: '#3d3247',
+        };
+      }
+      function drawSprite(g, sx, sy, px, map, pal) {
+        for (let y = 0; y < map.length; y++) {
+          const row = map[y];
+          for (let x = 0; x < row.length; x++) {
+            const col = pal[row[x]];
+            if (col) {
+              g.fillStyle = col;
+              g.fillRect(sx + x * px, sy + y * px, px, px);
+            }
+          }
+        }
+      }
+
+      function drawWeapon(g, sx, sy, PX, SPR_W, kind, hot, t) {
+        const wood = '#8a6a3a',
+          steel = '#cfd6dd';
+        if (kind === 'staff') {
+          g.fillStyle = wood;
+          g.fillRect(sx + SPR_W - 2, sy + 6, PX, PX * 8);
+          g.fillStyle = hot ? '#ffe27a' : '#8fd0ff';
+          g.fillRect(sx + SPR_W - 4, sy + 2, PX * 2, PX * 2);
+        } else if (kind === 'orb') {
+          const oy = sy + 6 + Math.sin(t / 200) * 3;
+          g.fillStyle = 'rgba(140,224,208,0.35)';
+          g.beginPath();
+          g.arc(sx + SPR_W + 2, oy, 8, 0, 7);
+          g.fill();
+          g.fillStyle = '#8fe0d0';
+          g.fillRect(sx + SPR_W, oy - 3, PX + 2, PX + 2);
+        } else if (kind === 'book') {
+          g.fillStyle = '#b03040';
+          g.fillRect(sx + SPR_W - 4, sy + 8 * PX, PX * 3, PX * 2);
+          g.fillStyle = '#efe7ff';
+          g.fillRect(sx + SPR_W - 3, sy + 8 * PX + 1, PX * 3 - 2, 2);
+        } else if (kind === 'scroll') {
+          g.fillStyle = '#f0e0b0';
+          g.fillRect(sx + SPR_W - 4, sy + 7 * PX, PX * 2, PX * 4);
+          g.fillStyle = wood;
+          g.fillRect(sx + SPR_W - 4, sy + 7 * PX, PX * 2, 2);
+        } else if (kind === 'sword') {
+          g.fillStyle = steel;
+          g.fillRect(sx - 2, sy + 4, PX, PX * 8);
+          g.fillStyle = wood;
+          g.fillRect(sx - 4, sy + 4 + PX * 8, PX * 3, PX);
+        } else if (kind === 'hammer') {
+          g.fillStyle = wood;
+          g.fillRect(sx - 2, sy + 6, PX, PX * 8);
+          g.fillStyle = '#9aa0aa';
+          g.fillRect(sx - 6, sy + 4, PX * 4, PX * 3);
+        } else if (kind === 'axe') {
+          g.fillStyle = wood;
+          g.fillRect(sx - 2, sy + 5, PX, PX * 9);
+          g.fillStyle = '#c0c6cc';
+          g.fillRect(sx - 8, sy + 4, PX * 3, PX * 4);
+        }
+      }
+
+      // ── 상태 ─────────────────────────────────────────────────────────────
+      const DEAD = new Set(['done', 'failed']);
+      function groupName(p) {
+        if (!p) return '기타';
+        const parts = p.replace(/\/+$/, '').split('/').filter(Boolean);
+        return parts.length >= 2 ? parts[parts.length - 2] : parts[parts.length - 1] || '기타';
+      }
+      function tokenPct(t) {
+        if (!t || !t.window) return null;
+        return Math.min(100, Math.round((t.context / t.window) * 100));
+      }
+
+      // ── 레이아웃 ────────────────────────────────────────────────────────
+      const cv = document.getElementById('scene');
+      const g = cv.getContext('2d');
+      let DPR = Math.min(2, window.devicePixelRatio || 1);
+      let members = [];
+      let rooms = [];
+      let scrollY = 0;
+      let contentH = 0;
+      const fx = []; // 이펙트 파티클/텍스트
+      const prevLevel = {};
+
+      const PX = 4;
+      const SPR_W = 16 * PX,
+        SPR_H = 18 * PX;
+      const CELL_W = 96,
+        CELL_H = 122;
+      const PER_ROW_MIN = 3;
+
+      function resize() {
+        DPR = Math.min(2, window.devicePixelRatio || 1);
+        cv.width = Math.floor(window.innerWidth * DPR);
+        cv.height = Math.floor(window.innerHeight * DPR);
+        cv.style.width = window.innerWidth + 'px';
+        cv.style.height = window.innerHeight + 'px';
+        layout();
+      }
+
+      function layout() {
+        const floor = agents.filter((a) => !DEAD.has(a.state));
+        const resting = agents.length - floor.length;
+        countEl.textContent = floor.length + (resting ? ' (+' + resting + ' 휴식)' : '');
+        const W = window.innerWidth;
+        const areaX = 24 + 250 + 24;
+        const areaW = Math.max(CELL_W * PER_ROW_MIN, W - areaX - 24);
+        const perRow = Math.max(PER_ROW_MIN, Math.floor(areaW / CELL_W));
+
+        const byGroup = new Map();
+        for (const a of floor) {
+          const k = groupName(a.project);
+          if (!byGroup.has(k)) byGroup.set(k, []);
+          byGroup.get(k).push(a);
+        }
+
+        members = [];
+        rooms = [];
+        let y = 150;
+        for (const [name, list] of byGroup) {
+          const rowsN = Math.ceil(list.length / perRow);
+          const roomH = 34 + rowsN * CELL_H;
+          rooms.push({ name, x: areaX - 12, y: y - 30, w: areaW + 4, h: roomH, count: list.length });
+          list.forEach((a, i) => {
+            const r = Math.floor(i / perRow),
+              c = i % perRow;
+            const m = {
+              a,
+              x: areaX + c * CELL_W + CELL_W / 2,
+              y: y + 20 + r * CELL_H,
+              phase: (a.id.charCodeAt(0) + a.id.charCodeAt(a.id.length - 1)) % 100,
+            };
+            members.push(m);
+            // 레벨업 감지
+            const lv = levelOf(a);
+            if (prevLevel[a.id] != null && lv > prevLevel[a.id]) burst(m.x, m.y - 30, '#ffd479', 'LEVEL UP!');
+            prevLevel[a.id] = lv;
+          });
+          y += roomH + 24;
+        }
+        contentH = y + 40;
+      }
+
+      // ── 이펙트 ───────────────────────────────────────────────────────────
+      function burst(x, y, color, text) {
+        for (let i = 0; i < 16; i++) {
+          const ang = (Math.PI * 2 * i) / 16;
+          fx.push({ x, y, vx: Math.cos(ang) * 1.6, vy: Math.sin(ang) * 1.6 - 0.5, life: 60, color, star: true });
+        }
+        if (text) fx.push({ x, y: y - 6, vx: 0, vy: -0.5, life: 80, color, text });
+      }
+      function updateFx() {
+        for (let i = fx.length - 1; i >= 0; i--) {
+          const p = fx[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          if (!p.text) p.vy += 0.04;
+          p.life--;
+          if (p.life <= 0) fx.splice(i, 1);
+        }
+      }
+      function drawFx() {
+        for (const p of fx) {
+          const al = Math.max(0, p.life / (p.text ? 80 : 60));
+          if (p.text) {
+            g.globalAlpha = al;
+            pixelText(p.text, p.x, p.y, 15, p.color, 'center', true);
+            g.globalAlpha = 1;
+          } else {
+            g.globalAlpha = al;
+            g.fillStyle = p.color;
+            g.fillRect(p.x - 2, p.y - 2, 4, 4);
+            g.globalAlpha = 1;
+          }
+        }
+      }
+
+      // ── 렌더 헬퍼 ────────────────────────────────────────────────────────
+      function rr(x, y, w, h, r) {
+        g.beginPath();
+        g.moveTo(x + r, y);
+        g.arcTo(x + w, y, x + w, y + h, r);
+        g.arcTo(x + w, y + h, x, y + h, r);
+        g.arcTo(x, y + h, x, y, r);
+        g.arcTo(x, y, x + w, y, r);
+        g.closePath();
+      }
+      function pixelText(text, x, y, size, color, align, bold) {
+        g.font = (bold ? 'bold ' : '') + size + 'px ui-monospace, Menlo, monospace';
+        g.textAlign = align || 'left';
+        g.textBaseline = 'alphabetic';
+        g.fillStyle = color;
+        g.fillText(text, x, y);
+      }
+      function esc(s) {
+        return String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+      }
+
+      let hover = null;
+
+      function frame(t) {
+        const W = window.innerWidth,
+          H = window.innerHeight;
+        g.setTransform(DPR, 0, 0, DPR, 0, 0);
+        g.imageSmoothingEnabled = false;
+
+        g.fillStyle = '#211a30';
+        g.fillRect(0, 0, W, H);
+        g.fillStyle = '#2c2440';
+        g.fillRect(0, 0, W, 60);
+        g.fillStyle = 'rgba(120,90,60,0.10)';
+        for (let i = 0; i < W; i += 40) g.fillRect(i, 60, 20, H - 60);
+
+        g.save();
+        g.translate(0, -scrollY);
+
+        for (const room of rooms) {
+          g.strokeStyle = 'rgba(155,120,220,0.35)';
+          g.lineWidth = 1;
+          rr(room.x, room.y, room.w, room.h, 12);
+          g.stroke();
+          g.fillStyle = '#4a3a6e';
+          rr(room.x + 8, room.y - 12, 34 + room.name.length * 9, 24, 6);
+          g.fill();
+          pixelText('🏠 ' + room.name + ' · ' + room.count, room.x + 18, room.y + 4, 13, '#efe7ff', 'left');
+        }
+
+        hover = null;
+        const mx = mouse.x,
+          my = mouse.y + scrollY;
+        for (const m of members) {
+          const a = m.a;
+          const cls = CLASSES[classKeyOf(a)] || CLASSES.mage;
+          const working = a.state === 'working';
+          const need = a.state === 'needs_input';
+          const dim = a.state === 'idle' || a.state === 'unknown';
+          const bob = working ? Math.sin(t / 90 + m.phase) * 3 : Math.sin(t / 260 + m.phase) * 1.5;
+          const sx = Math.round(m.x - SPR_W / 2);
+          const sy = Math.round(m.y - SPR_H + bob);
+
+          // 오라
+          if (cls.aura) {
+            g.fillStyle = cls.aura;
+            g.globalAlpha = 0.12 + 0.06 * Math.sin(t / 240 + m.phase);
+            g.beginPath();
+            g.ellipse(m.x, m.y - SPR_H / 2, SPR_W * 0.7, SPR_H * 0.62, 0, 0, 7);
+            g.fill();
+            g.globalAlpha = 1;
+          }
+
+          // 그림자
+          g.fillStyle = 'rgba(0,0,0,0.28)';
+          g.beginPath();
+          g.ellipse(m.x, m.y + 2, SPR_W * 0.42, 6, 0, 0, 7);
+          g.fill();
+
+          // 발판 링
+          if (need || working) {
+            g.strokeStyle = need
+              ? 'rgba(240,170,40,' + (0.5 + 0.5 * Math.sin(t / 160)) + ')'
+              : 'rgba(90,167,240,0.55)';
+            g.lineWidth = 2;
+            g.beginPath();
+            g.ellipse(m.x, m.y + 2, SPR_W * 0.5, 8, 0, 0, 7);
+            g.stroke();
+          }
+
+          const hit = mx >= sx - 8 && mx <= sx + SPR_W + 8 && my >= sy - 20 && my <= m.y + 8;
+          if (hit) {
+            hover = { m, sx, sy };
+            g.fillStyle = 'rgba(255,255,255,0.06)';
+            rr(sx - 8, sy - 22, SPR_W + 16, SPR_H + 46, 8);
+            g.fill();
+          }
+
+          const map = cls.base === 'warrior' ? WARRIOR : MAGE;
+          drawSprite(g, sx, sy, PX, map, paletteFor(cls, dim));
+          if (!dim) drawWeapon(g, sx, sy, PX, SPR_W, cls.weapon, working, t);
+
+          // 상태 말풍선
+          let bub = '',
+            bcol = '#fff';
+          if (need) (bub = '!'), (bcol = '#ffcf5a');
+          else if (working) (bub = ['·', '··', '···'][Math.floor(t / 220) % 3]), (bcol = '#8fd0ff');
+          else if (dim) (bub = 'z'), (bcol = '#9aa');
+          if (bub) {
+            const by = sy - 14 + Math.sin(t / 200 + m.phase) * 2;
+            g.fillStyle = '#0f0b17';
+            rr(m.x - 12, by - 12, 24, 18, 5);
+            g.fill();
+            g.strokeStyle = bcol;
+            g.lineWidth = 1;
+            g.stroke();
+            pixelText(bub, m.x, by + 2, 13, bcol, 'center');
+          }
+
+          // 레벨 배지
+          const lv = levelOf(a);
+          g.fillStyle = '#241a2e';
+          rr(sx - 6, sy + 2, 26, 15, 4);
+          g.fill();
+          g.strokeStyle = '#ffd479';
+          g.lineWidth = 1;
+          g.stroke();
+          pixelText('L' + lv, sx + 7, sy + 13, 11, '#ffd479', 'center', true);
+
+          // 서브에이전트 = 보조 점
+          const subs = (a.subagents || []).length;
+          for (let i = 0; i < Math.min(subs, 4); i++) {
+            g.fillStyle = '#c8a2ff';
+            g.fillRect(sx - 8 + i * 5, m.y - 2, 4, 4);
+          }
+
+          // 이름 + 직업
+          const nm = a.name && a.name.length > 12 ? a.name.slice(0, 11) + '…' : a.name || '(무명)';
+          pixelText(nm, m.x, m.y + 18, 11, dim ? '#8a8594' : '#e8e4f2', 'center');
+          pixelText(cls.name, m.x, m.y + 31, 10, cls.aura || '#c8a2ff', 'center');
+
+          // 마나(토큰) 바
+          const pct = tokenPct(a.tokens);
+          if (pct != null) {
+            const bw = 46;
+            g.fillStyle = '#141020';
+            rr(m.x - bw / 2, m.y + 36, bw, 5, 2);
+            g.fill();
+            g.fillStyle = pct > 80 ? '#e0863a' : pct > 55 ? '#e0c060' : '#4aa3e0';
+            rr(m.x - bw / 2, m.y + 36, (bw * pct) / 100, 5, 2);
+            g.fill();
+          }
+        }
+
+        updateFx();
+        drawFx();
+        g.restore();
+
+        drawQuestBoard(H, t);
+
+        // 툴팁
+        const tip = document.getElementById('tip');
+        if (hover && jobmenuFor == null) {
+          const a = hover.m.a;
+          const cls = CLASSES[classKeyOf(a)] || CLASSES.mage;
+          tip.style.display = 'block';
+          tip.style.left = Math.min(window.innerWidth - 310, mouse.x + 16) + 'px';
+          tip.style.top = mouse.y + 16 + 'px';
+          const st = { working: '⚙ 작업중', needs_input: '❗ 입력 필요', idle: '🛡 대기' }[a.state] || a.state;
+          tip.innerHTML =
+            '<div class="t-name">' + esc(a.name || '(무명)') + '</div>' +
+            '<div class="t-job">' + (a.kind === 'codex' ? '⚔ ' : '🧙 ') + esc(cls.name) + ' · Lv.' + levelOf(a) + (jobOverride[a.id] ? ' (전직)' : '') + '</div>' +
+            '<div class="t-role">' + st + (a.project ? ' · 🏠 ' + esc(groupName(a.project)) : '') + '</div>' +
+            (a.lastMessage ? '<div class="t-msg">' + esc(a.lastMessage.slice(0, 120)) + '</div>' : '') +
+            '<div class="t-hint">클릭 → 전직시키기</div>';
+          cv.style.cursor = 'pointer';
+        } else {
+          tip.style.display = 'none';
+          cv.style.cursor = 'default';
+        }
+
+        requestAnimationFrame(frame);
+      }
+
+      function drawQuestBoard(H, t) {
+        const x = 24,
+          y = 80,
+          w = 250;
+        const quests = agents.filter((a) => a.state === 'needs_input' || a.state === 'working');
+        const h = Math.min(H - 120, 70 + quests.length * 30 + 20);
+        g.fillStyle = '#5a3f28';
+        rr(x - 6, y - 6, w + 12, h + 12, 10);
+        g.fill();
+        g.fillStyle = '#3d2a1a';
+        rr(x, y, w, h, 8);
+        g.fill();
+        pixelText('📜 진행 퀘스트', x + 14, y + 26, 15, '#ffd479', 'left');
+        g.strokeStyle = 'rgba(255,210,120,0.25)';
+        g.beginPath();
+        g.moveTo(x + 12, y + 36);
+        g.lineTo(x + w - 12, y + 36);
+        g.stroke();
+        let qy = y + 58;
+        if (!quests.length) pixelText('의뢰 없음 — 모두 대기중', x + 14, qy, 12, '#b7a98f', 'left');
+        for (const a of quests.slice(0, Math.floor((h - 70) / 30))) {
+          const need = a.state === 'needs_input';
+          g.fillStyle = need ? 'rgba(240,170,40,0.16)' : 'rgba(90,167,240,0.12)';
+          rr(x + 8, qy - 14, w - 16, 26, 5);
+          g.fill();
+          pixelText(need ? '❗' : '⚙', x + 16, qy + 4, 13, need ? '#ffcf5a' : '#8fd0ff', 'left');
+          pixelText((a.name || '(무명)').slice(0, 22), x + 34, qy + 4, 12, '#eee6d8', 'left');
+          qy += 30;
+        }
+      }
+
+      // ── 전직 메뉴 ────────────────────────────────────────────────────────
+      const jm = document.getElementById('jobmenu');
+      let jobmenuFor = null;
+      function openJobMenu(m, clientX, clientY) {
+        jobmenuFor = m;
+        const a = m.a;
+        const jobs = a.kind === 'codex' ? CODEX_JOBS : CLAUDE_JOBS;
+        const cur = classKeyOf(a);
+        let html = '<div class="jm-head">🎓 ' + esc((a.name || '길드원').slice(0, 16)) + ' 전직</div>';
+        for (const k of jobs) {
+          const c = CLASSES[k];
+          html +=
+            '<button data-k="' + k + '"><span class="sw" style="background:' + c.main + '"></span>' +
+            esc(c.name) + (k === cur ? ' ✓' : '') + '</button>';
+        }
+        html += '<button class="jm-auto" data-k="__auto">↺ 자동 배정으로</button>';
+        jm.innerHTML = html;
+        jm.style.display = 'block';
+        jm.style.left = Math.min(window.innerWidth - 190, clientX) + 'px';
+        jm.style.top = Math.min(window.innerHeight - jm.offsetHeight - 10, clientY) + 'px';
+      }
+      function closeJobMenu() {
+        jobmenuFor = null;
+        jm.style.display = 'none';
+      }
+      jm.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b || !jobmenuFor) return;
+        const a = jobmenuFor.a;
+        const k = b.dataset.k;
+        if (k === '__auto') delete jobOverride[a.id];
+        else jobOverride[a.id] = k;
+        localStorage.setItem('cc.guild.jobs', JSON.stringify(jobOverride));
+        // fx는 씬 좌표계(스크롤 translate 안)에서 그려지므로 member.y 그대로 사용
+        burst(jobmenuFor.x, jobmenuFor.y - 40, '#c8a2ff', '전직!');
+        closeJobMenu();
+      });
+
+      // ── 입력 ─────────────────────────────────────────────────────────────
+      const mouse = { x: -99, y: -99 };
+      // 렌더 루프와 무관하게 좌표로 직접 캐릭터 판정 (클릭 타이밍 이슈 방지)
+      function hitTest(cx, cy) {
+        const my = cy + scrollY;
+        for (const m of members) {
+          const sx = m.x - SPR_W / 2,
+            sy = m.y - SPR_H;
+          if (cx >= sx - 8 && cx <= sx + SPR_W + 8 && my >= sy - 20 && my <= m.y + 8) return m;
+        }
+        return null;
+      }
+      cv.addEventListener('mousemove', (e) => {
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+      });
+      cv.addEventListener('mouseleave', () => {
+        mouse.x = mouse.y = -99;
+      });
+      cv.addEventListener('click', (e) => {
+        const m = hitTest(e.clientX, e.clientY);
+        if (m) openJobMenu(m, e.clientX, e.clientY);
+        else closeJobMenu();
+      });
+      window.addEventListener('wheel', (e) => {
+        scrollY = Math.max(0, Math.min(Math.max(0, contentH - window.innerHeight + 40), scrollY + e.deltaY));
+        closeJobMenu();
+      });
+      window.addEventListener('resize', resize);
+
+      resize();
+      connectSSE();
+      requestAnimationFrame(frame);
+    </script>
+  </body>
+</html>
