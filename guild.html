@@ -206,10 +206,12 @@
       }
       #jobmenu .jm-row {
         display: flex;
+        flex-wrap: wrap;
         gap: 6px;
         margin-top: 6px;
       }
       #jobmenu .jm-row button {
+        flex: 1 1 104px;
         justify-content: center;
         padding: 7px 8px;
         font-size: 11px;
@@ -786,6 +788,14 @@
       };
       const CLAUDE_JOBS = ['apprentice_mage', 'mage', 'archmage', 'summoner', 'sage', 'courier'];
       const CODEX_JOBS = ['recruit', 'warrior', 'knight', 'smith', 'berserker', 'courier'];
+      const JOB_OVERRIDE_KEY = 'guild-town.job-overrides';
+      let jobOverride = {};
+      try {
+        const saved = JSON.parse(localStorage.getItem(JOB_OVERRIDE_KEY) || '{}');
+        if (saved && typeof saved === 'object' && !Array.isArray(saved)) jobOverride = saved;
+      } catch {
+        // 손상된 저장값은 무시하고 자동 직업 배정을 유지한다.
+      }
 
       function autoClass(a) {
         if (a.aiHandoff && /READY|RUNNING/.test(a.aiHandoff)) return 'courier';
@@ -806,7 +816,17 @@
       }
 
       function classKeyOf(a) {
-        return autoClass(a);
+        const saved = jobOverride[a.id];
+        return saved && CLASSES[saved] ? saved : autoClass(a);
+      }
+      function setJobOverride(a, key) {
+        if (key && CLASSES[key]) jobOverride[a.id] = key;
+        else delete jobOverride[a.id];
+        try {
+          localStorage.setItem(JOB_OVERRIDE_KEY, JSON.stringify(jobOverride));
+        } catch {
+          // 저장 공간을 쓸 수 없어도 현재 탭의 전직은 그대로 적용한다.
+        }
       }
       function classReason(a) {
         const ctx = (a.tokens && a.tokens.context) || 0;
@@ -4324,6 +4344,14 @@
         html += '<b>상태</b><span>' + esc(state) + (canControl ? ' · 웹에서 조작 가능' : ' · pid 없음') + '</span>';
         html += '<b>위치</b><span>' + esc(groupName(a.project)) + '</span>';
         html += '</div>';
+        const jobs = teamOf(a) === 'codex' ? CODEX_JOBS : CLAUDE_JOBS;
+        html += '<div class="jm-meta">직업 변경 · 선택한 직업은 이 브라우저에 저장됩니다.</div>';
+        html += '<div class="jm-row">';
+        for (const key of jobs) {
+          const selected = classKeyOf(a) === key;
+          html += '<button class="' + (selected ? 'primary' : '') + '" data-job="' + esc(key) + '">' + esc(CLASSES[key].name) + '</button>';
+        }
+        html += '<button data-job="auto">자동 배정</button></div>';
         html += '<div class="jm-actions">';
         if (canControl) {
           html += menuButton('screen', 'primary', '↗', '대화창에서 보기', '터미널 화면을 읽고, 답변/선택지를 웹에서 보냅니다.');
@@ -4423,6 +4451,17 @@
           const m = pickerMembers[Number(b.dataset.pick)];
           closeJobMenu();
           if (m) openJobMenu(m, mouse.x, mouse.y);
+          return;
+        }
+        const job = e.target.closest('button[data-job]')?.dataset.job;
+        if (job && jobmenuFor) {
+          const a = jobmenuFor.a;
+          setJobOverride(a, job === 'auto' ? null : job);
+          const next = CLASSES[classKeyOf(a)] || CLASSES.mage;
+          burst(jobmenuFor.x, jobmenuFor.y - 42, next.aura || next.main, '전직!');
+          closeJobMenu();
+          layout();
+          toast(job === 'auto' ? '직업을 자동 배정으로 되돌렸어요' : next.name + ' 전직 완료!');
           return;
         }
         const action = e.target.closest('button[data-action]')?.dataset.action;
