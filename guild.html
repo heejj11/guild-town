@@ -1251,6 +1251,8 @@
         T: '#5c5aa6', t: '#36366f', Y: '#d7b44a', K: '#513725', B: '#6a4d3b',
       };
       const JOB_ATLAS_CELL = 362;
+      const JOB_RENDER_SIZE = 88;
+      const JOB_MINI_SIZE = 70;
       const JOB_ATLAS_INDEX = {
         apprentice_mage: 0, mage: 1, archmage: 2, summoner: 3,
         sage: 4, recruit: 5, warrior: 6, knight: 7,
@@ -1262,7 +1264,7 @@
       jobAtlas.onerror = () => console.warn('직업 스프라이트 시트를 불러오지 못해 Canvas 캐릭터로 대체합니다.');
       jobAtlas.src = 'assets/guild-jobs.png';
 
-      function drawJobSprite(x, feetY, key, dim, working, t, size = 104) {
+      function drawJobSprite(x, feetY, key, dim, working, t, size = JOB_RENDER_SIZE) {
         if (!jobAtlasReady || JOB_ATLAS_INDEX[key] == null) return false;
         const index = JOB_ATLAS_INDEX[key];
         const col = index % 4;
@@ -2156,7 +2158,7 @@
         g.beginPath();
         g.ellipse(x, y + 1, SPR_W * 0.25, 4, 0, 0, 7);
         g.fill();
-        if (drawJobSprite(x, y, key, false, animate, t, 82)) return;
+        if (drawJobSprite(x, y, key, false, animate, t, JOB_MINI_SIZE)) return;
         g.save();
         g.translate(sx, sy);
         g.scale(scale, scale);
@@ -4490,12 +4492,12 @@
 
           if (working || need) drawMonster(a, monsterX, monsterY, t, need);
 
-          const hit = mx >= pos.x - 36 && mx <= pos.x + 36 && my >= pos.y - 64 && my <= pos.y + 18;
+          const hit = mx >= pos.x - 44 && mx <= pos.x + 44 && my >= pos.y - 88 && my <= pos.y + 18;
           const selected = jobmenuFor?.a?.id === a.id || controlPanelFor?.id === a.id;
           if (hit) {
             hover = { m, sx, sy };
             g.fillStyle = 'rgba(255,255,255,0.06)';
-            rr(pos.x - 30, pos.y - 58, 60, 70, 8);
+            rr(pos.x - 44, pos.y - 88, 88, 102, 8);
             g.fill();
           }
           if (selected) {
@@ -4524,15 +4526,17 @@
             }
           }
 
-          const badgeY = sy - 8;
+          const spriteTop = jobAtlasReady ? pos.y - JOB_RENDER_SIZE * 0.91 : sy;
+          const badgeY = spriteTop - 10;
+          const badgeX = pos.x - 24;
           const badgeColor = need ? '#ffcf5a' : failed ? '#e07a7a' : a.kind === 'codex' ? '#8fd0ff' : '#c8a2ff';
           g.fillStyle = '#0f0b17';
-          rr(pos.x - 9, badgeY - 8, 18, 14, 5);
+          rr(badgeX - 9, badgeY - 8, 18, 14, 5);
           g.fill();
           g.strokeStyle = badgeColor;
           g.lineWidth = 1;
           g.stroke();
-          pixelText(String(m.no), pos.x, badgeY + 2, 8, badgeColor, 'center', true);
+          pixelText(String(m.no), badgeX, badgeY + 2, 8, badgeColor, 'center', true);
           // 상태 태그
           let bub = '',
             bcol = '#fff';
@@ -4540,15 +4544,16 @@
           else if (need) (bub = '위기'), (bcol = '#ffcf5a');
           else if (working && hover?.m === m) (bub = '전투'), (bcol = '#8fd0ff');
           if (bub) {
-            const by = sy - 8;
+            const by = badgeY;
             g.fillStyle = '#0f0b17';
             const bw = 34;
-            rr(pos.x - bw / 2, by - 11, bw, 16, 4);
+            const statusX = pos.x + 22;
+            rr(statusX - bw / 2, by - 11, bw, 16, 4);
             g.fill();
             g.strokeStyle = bcol;
             g.lineWidth = 1;
             g.stroke();
-            pixelText(bub, pos.x, by + 1, 10, bcol, 'center');
+            pixelText(bub, statusX, by + 1, 10, bcol, 'center');
           }
           const moveReason = !failed && hover?.m === m && (need ? '도움 요청' : classKey === 'courier' ? '전령 전달' : '');
           if (moveReason) {
@@ -5251,8 +5256,8 @@
         const currentPositions = separatedMemberPositions(latestT);
         for (const m of members) {
           const pos = currentPositions.get(m);
-          if (cx >= pos.x - 36 && cx <= pos.x + 36 && my >= pos.y - 64 && my <= pos.y + 18) {
-            const centerY = pos.y - 24;
+          if (cx >= pos.x - 44 && cx <= pos.x + 44 && my >= pos.y - 88 && my <= pos.y + 18) {
+            const centerY = pos.y - 38;
             hits.push({ m, distance: Math.hypot(cx - pos.x, (my - centerY) * 0.8) });
           }
         }
