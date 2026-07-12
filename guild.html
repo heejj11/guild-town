@@ -1007,8 +1007,7 @@
       function isMapControllable(a) {
         if (DEMO_MODE) return true;
         const pid = Number(a?.pid);
-        if (!Number.isFinite(pid)) return false;
-        return terminalControl.get(pid) === true;
+        return Number.isFinite(pid);
       }
 
       // ── 색 유틸 ──────────────────────────────────────────────────────────
@@ -1050,6 +1049,11 @@
         berserker: { name: '광전사', base: 'warrior', main: '#69676c', robe: '#74383a', weapon: 'axe', aura: '#ff9a7a', line: 'codex' },
         courier: { name: '전령', base: 'mage', main: '#4f7254', robe: '#3f5d47', weapon: 'scroll', line: 'any' },
       };
+      const DISPLAY_JOB_POOLS = {
+        claude: ['apprentice_mage', 'mage', 'summoner', 'sage', 'archmage'],
+        codex: ['recruit', 'warrior', 'knight', 'smith', 'berserker'],
+      };
+      const displayClassById = new Map();
 
       function autoClass(a) {
         if (a.aiHandoff && /READY|RUNNING/.test(a.aiHandoff)) return 'courier';
@@ -1070,7 +1074,30 @@
       }
 
       function classKeyOf(a) {
-        return autoClass(a);
+        return displayClassById.get(a.id) || autoClass(a);
+      }
+      function assignDistinctDisplayClasses(list) {
+        displayClassById.clear();
+        for (const team of ['claude', 'codex']) {
+          const pool = DISPLAY_JOB_POOLS[team];
+          const used = new Set();
+          for (const a of list.filter((x) => teamOf(x) === team)) {
+            const preferred = autoClass(a);
+            if (preferred === 'courier') {
+              displayClassById.set(a.id, preferred);
+              continue;
+            }
+            const at = Math.max(0, pool.indexOf(preferred));
+            const candidates = [preferred];
+            for (let distance = 1; distance < pool.length; distance++) {
+              if (at - distance >= 0) candidates.push(pool[at - distance]);
+              if (at + distance < pool.length) candidates.push(pool[at + distance]);
+            }
+            const chosen = candidates.find((key) => !used.has(key)) || preferred;
+            used.add(chosen);
+            displayClassById.set(a.id, chosen);
+          }
+        }
       }
       function classReason(a) {
         const ctx = (a.tokens && a.tokens.context) || 0;
@@ -1317,13 +1344,19 @@
       jobActionAtlas.onerror = () => console.warn('직업 공격 프레임을 불러오지 못해 대기 모션만 사용합니다.');
       jobActionAtlas.src = 'assets/guild-jobs-action.png';
 
+      function isJobAttackFrame(key, working, t) {
+        if (!working || !jobActionAtlasReady) return false;
+        const cycle = (t + hashOf(key) * 13) % 1450;
+        return cycle >= 360 && cycle < 820;
+      }
+
       function drawJobSprite(x, feetY, key, dim, working, t, size = JOB_RENDER_SIZE) {
         if (!jobAtlasReady || JOB_ATLAS_INDEX[key] == null) return false;
         const index = JOB_ATLAS_INDEX[key];
         const col = index % 4;
         const row = Math.floor(index / 4);
         const cycle = (t + hashOf(key) * 13) % 1450;
-        const attacking = working && jobActionAtlasReady && cycle >= 360 && cycle < 820;
+        const attacking = isJobAttackFrame(key, working, t);
         const breath = Math.sin(t / 520 + hashOf(key) * 0.01);
         const bob = breath * 0.8;
         const anticipation = working && cycle < 360 ? cycle / 360 : 0;
@@ -1578,10 +1611,10 @@
       function monsterMap(a) {
         return [SLIME, BAT, BUG][hashOf(a.id || a.name || '') % 3];
       }
-      function drawMonster(a, x, y, t, danger) {
+      function drawMonster(a, x, y, t, danger, hit) {
         const map = monsterMap(a);
         const scale = 1.4;
-        const shake = danger ? Math.sin(t / 90) * 3 : Math.sin(t / 160) * 1.4;
+        const shake = hit ? Math.sin(t / 22) * 5 : danger ? Math.sin(t / 90) * 3 : Math.sin(t / 160) * 1.4;
         drawSprite(g, Math.round(x + shake), Math.round(y), scale, map, MONSTER_PAL);
         const hp = danger ? 0.78 : 0.35 + 0.3 * (0.5 + Math.sin(t / 900 + hashOf(a.id)) * 0.5);
         g.fillStyle = '#140f1f';
@@ -1590,6 +1623,22 @@
         g.fillStyle = danger ? '#ff9a3a' : '#d95050';
         rr(x - 2, y - 8, 30 * hp, 4, 2);
         g.fill();
+        if (hit) {
+          const flash = 0.55 + 0.35 * Math.abs(Math.sin(t / 38));
+          g.save();
+          g.globalAlpha = flash;
+          g.fillStyle = '#fff3b0';
+          const cx = x + 10;
+          const cy = y + 8;
+          g.fillRect(cx - 15, cy - 1, 8, 3);
+          g.fillRect(cx + 10, cy - 1, 8, 3);
+          g.fillRect(cx - 1, cy - 15, 3, 8);
+          g.fillRect(cx - 1, cy + 10, 3, 8);
+          g.fillStyle = '#ff9a3a';
+          g.fillRect(cx - 7, cy - 7, 4, 4);
+          g.fillRect(cx + 6, cy + 6, 4, 4);
+          g.restore();
+        }
       }
 
       function drawBuilding(b, t) {
@@ -2347,6 +2396,7 @@
         const activeAgents = floor.filter(
           (a) => a.state !== 'idle' && a.state !== 'unknown' && !stashedIds.has(a.id) && isMapControllable(a),
         );
+        assignDistinctDisplayClasses(activeAgents);
         const resting = restingAgents.length + agents.length - floor.length;
         countEl.textContent = activeAgents.length + (resting ? ' (+' + resting + ' 막사)' : '');
         if (killsEl) killsEl.textContent = agents.filter((a) => a.state === 'done').length;
@@ -4539,8 +4589,10 @@
           else if (dim && classKey === 'courier') bob = -Math.abs(Math.sin(t / 260 + m.phase)) * 3;
           const sx = Math.round(pos.x - SPR_W / 2);
           const sy = Math.round(pos.y - SPR_H + bob);
-          const monsterX = pos.x + (need ? 48 : 44);
+          // 생성된 공격 프레임은 화면 왼쪽을 향한다. 몬스터도 그 타격선에 둔다.
+          const monsterX = pos.x - (need ? 58 : 54);
           const monsterY = pos.y - 28;
+          const attackHit = isJobAttackFrame(classKey, working, t);
 
           // 오라
           if (cls.aura && !failed) {
@@ -4573,7 +4625,7 @@
             g.stroke();
           }
 
-          if (working || need) drawMonster(a, monsterX, monsterY, t, need);
+          if (working || need) drawMonster(a, monsterX, monsterY, t, need, attackHit);
 
           const hit = mx >= pos.x - 44 && mx <= pos.x + 44 && my >= pos.y - 88 && my <= pos.y + 18;
           const selected = jobmenuFor?.a?.id === a.id || controlPanelFor?.id === a.id;
