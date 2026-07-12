@@ -22,6 +22,7 @@ python3 -m http.server 8080
 ## 구성
 - `guild.html`: 길드 타운 웹 화면
 - `assets/guild-jobs.png`: 직업별 투명 픽셀 스프라이트 시트
+- `assets/guild-jobs-action.png`: 직업별 공격·주문 시전 프레임
 - `SPEC.md`: 구현 스펙과 디자인 방향
 
 외부 빌드 과정 없이 폴더 전체를 정적 파일로 서빙하면 됩니다.

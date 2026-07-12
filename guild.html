@@ -1288,23 +1288,31 @@
       jobAtlas.onload = () => (jobAtlasReady = true);
       jobAtlas.onerror = () => console.warn('직업 스프라이트 시트를 불러오지 못해 Canvas 캐릭터로 대체합니다.');
       jobAtlas.src = 'assets/guild-jobs.png';
+      const jobActionAtlas = new Image();
+      let jobActionAtlasReady = false;
+      jobActionAtlas.onload = () => (jobActionAtlasReady = true);
+      jobActionAtlas.onerror = () => console.warn('직업 공격 프레임을 불러오지 못해 대기 모션만 사용합니다.');
+      jobActionAtlas.src = 'assets/guild-jobs-action.png';
 
       function drawJobSprite(x, feetY, key, dim, working, t, size = JOB_RENDER_SIZE) {
         if (!jobAtlasReady || JOB_ATLAS_INDEX[key] == null) return false;
         const index = JOB_ATLAS_INDEX[key];
         const col = index % 4;
         const row = Math.floor(index / 4);
+        const cycle = (t + hashOf(key) * 13) % 1450;
+        const attacking = working && jobActionAtlasReady && cycle >= 360 && cycle < 820;
         const breath = Math.sin(t / 520 + hashOf(key) * 0.01);
         const bob = breath * 0.8;
-        const action = working ? Math.sin(t / 290 + hashOf(key)) : 0;
-        const lift = working ? Math.max(0, action) * 1.1 : 0;
+        const anticipation = working && cycle < 360 ? cycle / 360 : 0;
+        const recoil = working && cycle >= 820 && cycle < 1080 ? 1 - (cycle - 820) / 260 : 0;
+        const action = attacking ? 1 : anticipation * -0.35 + recoil * 0.25;
+        const lift = attacking && (key === 'courier' || key === 'berserker') ? 1.4 : 0;
         g.save();
         g.globalAlpha = dim ? 0.62 : 1;
-        g.translate(x + action * 0.65, feetY + bob - lift);
-        if (working && (key === 'warrior' || key === 'berserker' || key === 'smith')) g.rotate(action * 0.009);
+        g.translate(x + action * 1.3, feetY + bob - lift);
         g.scale(1 - breath * 0.0025, 1 + breath * 0.0025);
         g.drawImage(
-          jobAtlas,
+          attacking ? jobActionAtlas : jobAtlas,
           col * JOB_ATLAS_CELL,
           row * JOB_ATLAS_CELL,
           JOB_ATLAS_CELL,
