@@ -2164,8 +2164,8 @@
         SPR_H = 22 * PX;
       const MEMBER_GAP_X = 68,
         MEMBER_GAP_Y = 92,
-        MEMBER_MIN_DIST = 64,
-        MEMBER_REST_MIN_DIST = 40;
+        MEMBER_MIN_DIST = 92,
+        MEMBER_REST_MIN_DIST = 72;
       const CELL_W = 116,
         CELL_H = 142;
       const PER_ROW_MIN = 3;
@@ -2567,57 +2567,20 @@
         return { x: a.x + (b.x - a.x) * local, y: a.y + (b.y - a.y) * local };
       }
       function memberPos(m, t) {
-        const a = m.a;
-        if (a.state === 'failed') return { x: m.x, y: m.y };
-        const walking = a.state === 'needs_input' || classKeyOf(a) === 'courier';
-        const speed = a.state === 'needs_input' ? 22000 : 26000;
-        const loop = (t / speed + m.phase * 0.017) % 1;
-        const travel = walking ? (loop < 0.5 ? loop * 2 : (1 - loop) * 2) : 1;
-        const base = walking ? routePoint(m.route, travel) : { x: m.x, y: m.y };
-        const step = walking ? Math.abs(Math.sin(t / 160 + m.phase)) : 0;
-        const jitter = a.state === 'needs_input' ? Math.sin(t / 120 + m.phase) * 1.2 : 0;
-        return {
-          x: base.x + jitter,
-          y: base.y + Math.sin(t / 720 + m.phase) * 1.1 - step * 1.5,
-        };
+        // 선택 안정성을 위해 화면상의 자리는 고정한다. 생동감은 캐릭터 내부 bob/도구 모션으로 표현한다.
+        return { x: m.x, y: m.y };
       }
 
-      // 이동 경로가 교차해도 캐릭터가 포개지지 않도록 화면 좌표를 매 프레임 보정한다.
+      // 레이아웃 결과를 결정론적으로 한 번 더 벌린다. 시간 기반 이동이나 장애물 반발은 사용하지 않는다.
       function separatedMemberPositions(t) {
         const positions = new Map(members.map((m) => [m, memberPos(m, t)]));
-        const minDistance = 78;
-        const visualObstacles = townMap
-          ? [
-              ...buildings.map((b) => ({ x: b.x - 8, y: b.y - 8, w: b.w + 16, h: b.h + 88 })),
-              { x: townMap.handoffZone.x, y: townMap.handoffZone.y, w: townMap.handoffZone.w, h: townMap.handoffZone.h },
-              { x: townMap.claudeZone.x + 8, y: townMap.claudeZone.y + 8, w: 112, h: 20 },
-              { x: townMap.codexZone.x + 8, y: townMap.codexZone.y + 8, w: 112, h: 20 },
-              { x: townMap.knockZone.x + 8, y: townMap.knockZone.y + 8, w: 112, h: 20 },
-              { x: townMap.claudeZone.x + 18, y: townMap.claudeZone.y + 18, w: 76, h: 58 },
-              { x: townMap.codexZone.x + 18, y: townMap.codexZone.y + 18, w: 76, h: 58 },
-            ]
-          : [];
+        const minDistance = 92;
         const clampToTown = (pos) => {
           if (!townMap) return;
           pos.x = Math.min(townMap.x + townMap.w - 42, Math.max(townMap.x + 42, pos.x));
           pos.y = Math.min(townMap.y + townMap.h - 34, Math.max(townMap.y + 78, pos.y));
         };
-        const avoidObstacle = (pos, obstacle) => {
-          // 캐릭터의 실제 화면 영역(x ±38, 발 기준 y -68..+20)을 장애물에 포함한다.
-          const left = obstacle.x - 38;
-          const right = obstacle.x + obstacle.w + 38;
-          const top = obstacle.y - 20;
-          const bottom = obstacle.y + obstacle.h + 68;
-          if (pos.x <= left || pos.x >= right || pos.y <= top || pos.y >= bottom) return;
-          const distances = [pos.x - left, right - pos.x, pos.y - top, bottom - pos.y];
-          const nearest = Math.min(...distances);
-          if (nearest === distances[0]) pos.x = left;
-          else if (nearest === distances[1]) pos.x = right;
-          else if (nearest === distances[2]) pos.y = top;
-          else pos.y = bottom;
-          clampToTown(pos);
-        };
-        for (let pass = 0; pass < 10; pass++) {
+        for (let pass = 0; pass < 12; pass++) {
           for (let i = 0; i < members.length; i++) {
             for (let j = i + 1; j < members.length; j++) {
               const a = positions.get(members[i]);
@@ -2643,9 +2606,6 @@
               clampToTown(a);
               clampToTown(b);
             }
-          }
-          for (const pos of positions.values()) {
-            for (const obstacle of visualObstacles) avoidObstacle(pos, obstacle);
           }
         }
         return positions;
