@@ -922,6 +922,7 @@
       let sessionPanelVisible = window.innerWidth >= 900;
       let sessionFilter = '';
       let lastFocusedElement = null;
+      const terminalControl = new Map();
       const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       const DEMO = [
@@ -966,6 +967,7 @@
                 connEl.textContent = '온라인';
                 connEl.className = '';
                 layout();
+                probeTerminalControl(list);
               }
             } catch {}
           };
@@ -986,6 +988,27 @@
           agents = DEMO_MODE ? DEMO : [];
           layout();
         }
+      }
+
+      function probeTerminalControl(list) {
+        if (DEMO_MODE) return;
+        for (const a of list) {
+          const pid = Number(a?.pid);
+          if (!Number.isFinite(pid) || terminalControl.has(pid)) continue;
+          terminalControl.set(pid, 'checking');
+          fetch(API + '/api/screen/' + encodeURIComponent(pid))
+            .then((r) => r.json())
+            .then((data) => terminalControl.set(pid, data?.ok === true))
+            .catch(() => terminalControl.set(pid, false))
+            .finally(() => layout());
+        }
+      }
+
+      function isMapControllable(a) {
+        if (DEMO_MODE) return true;
+        const pid = Number(a?.pid);
+        if (!Number.isFinite(pid)) return false;
+        return terminalControl.get(pid) === true;
       }
 
       // ── 색 유틸 ──────────────────────────────────────────────────────────
@@ -2318,8 +2341,12 @@
         }
         const floor = agents.filter((a) => !DEAD.has(a.state));
         for (const a of floor) if (a.state === 'working' || a.state === 'needs_input') stashedIds.delete(a.id);
-        const restingAgents = floor.filter((a) => a.state === 'idle' || a.state === 'unknown' || stashedIds.has(a.id));
-        const activeAgents = floor.filter((a) => a.state !== 'idle' && a.state !== 'unknown' && !stashedIds.has(a.id));
+        const restingAgents = floor.filter(
+          (a) => a.state === 'idle' || a.state === 'unknown' || stashedIds.has(a.id) || !isMapControllable(a),
+        );
+        const activeAgents = floor.filter(
+          (a) => a.state !== 'idle' && a.state !== 'unknown' && !stashedIds.has(a.id) && isMapControllable(a),
+        );
         const resting = restingAgents.length + agents.length - floor.length;
         countEl.textContent = activeAgents.length + (resting ? ' (+' + resting + ' 막사)' : '');
         if (killsEl) killsEl.textContent = agents.filter((a) => a.state === 'done').length;
@@ -4797,6 +4824,16 @@
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => (toastEl.style.display = 'none'), 2600);
       }
+      function openAgentInteraction(m, clientX = mouse.x, clientY = mouse.y) {
+        const pid = Number(m?.a?.pid);
+        if (Number.isFinite(pid) && isMapControllable(m.a)) {
+          closeJobMenu();
+          openControlPanel(m.a);
+          readAgentScreen(m.a);
+          return;
+        }
+        openJobMenu(m, clientX, clientY);
+      }
       function openJobMenu(m, clientX = mouse.x, clientY = mouse.y) {
         rememberFocus();
         closeSessionMenu();
@@ -4941,7 +4978,7 @@
         if (b) {
           const m = pickerMembers[Number(b.dataset.pick)];
           closeJobMenu();
-          if (m) openJobMenu(m, mouse.x, mouse.y);
+          if (m) openAgentInteraction(m, mouse.x, mouse.y);
           return;
         }
         const action = e.target.closest('button[data-action]')?.dataset.action;
@@ -5365,7 +5402,7 @@
         const m = hits[0] || null;
         const b = hitBuilding(e.clientX, e.clientY);
         if (hits.length > 1) openMemberPicker(hits, e.clientX, e.clientY);
-        else if (m) openJobMenu(m, e.clientX, e.clientY);
+        else if (m) openAgentInteraction(m, e.clientX, e.clientY);
         else if (b) openSessionMenu(b, e.clientX, e.clientY);
         else {
           closeJobMenu();
