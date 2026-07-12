@@ -2062,11 +2062,12 @@
         if (status === 'DONE' || status === 'DONE_REVERTED') return '완료됨';
         return status || '협업중';
       }
-      function drawMiniAgent(a, x, y, key, t) {
+      function drawMiniAgent(a, x, y, key, t, animate = false) {
         const cls = CLASSES[key] || CLASSES.mage;
         const scale = 0.72;
+        const animT = animate ? t : 0;
         const sx = Math.round(x - (SPR_W * scale) / 2);
-        const sy = Math.round(y - SPR_H * scale + Math.sin(t / 260 + x) * 1.2);
+        const sy = Math.round(y - SPR_H * scale + (animate ? Math.sin(t / 260 + x) * 1.2 : 0));
         g.fillStyle = 'rgba(0,0,0,0.28)';
         g.beginPath();
         g.ellipse(x, y + 1, SPR_W * 0.25, 4, 0, 0, 7);
@@ -2074,7 +2075,7 @@
         g.save();
         g.translate(sx, sy);
         g.scale(scale, scale);
-        drawCuteCharacter(0, 0, key, cls, false, true, t);
+        drawCuteCharacter(0, 0, key, cls, false, animate, animT);
         g.restore();
       }
       function drawHandoffScene(h, t) {
@@ -2095,31 +2096,35 @@
         g.stroke();
         pixelText(groupName(h.project) + ' 길드 회의', x + 107, cardTop + 16, 11, '#ffd479', 'center', true);
         pixelText(handoffLabel(h.status), x + 107, cardTop + 29, 8, '#f1dfad', 'center');
-        drawMiniAgent(h.claude, x + 42, y - 2, h.status === 'READY_FOR_CODEX' ? 'courier' : 'mage', t);
-        drawMiniAgent(h.codex, x + 154, y - 2, h.status === 'CODEX_RUNNING' ? 'smith' : 'warrior', t);
+        const transferActive = h.status === 'READY_FOR_CODEX' || h.status === 'READY_FOR_CODEX_REVIEW';
+        const workActive = h.status === 'CODEX_RUNNING';
+        drawMiniAgent(h.claude, x + 42, y - 2, h.status === 'READY_FOR_CODEX' ? 'courier' : 'mage', t, transferActive);
+        drawMiniAgent(h.codex, x + 154, y - 2, workActive ? 'smith' : 'warrior', t, transferActive || workActive);
 
         const dialogue = handoffDialogue(h.status);
-        const line = dialogue[Math.floor(t / 1800) % dialogue.length];
+        const line = dialogue[transferActive || workActive ? Math.floor(t / 1800) % dialogue.length : 0];
         const bubbleY = cardTop + 42;
         if (line.team === 'claude') drawBubble(line.text, x + 8, bubbleY, '#c8a2ff', 'left');
         else drawBubble(line.text, x + 202, bubbleY, '#8fd0ff', 'right');
 
-        const p = (Math.sin(t / 700) + 1) / 2;
-        const sx = x + 72 + (x + 124 - (x + 72)) * p;
-        const sy = y - 32 + Math.sin(t / 180) * 4;
-        g.strokeStyle = 'rgba(255,212,121,0.45)';
-        g.lineWidth = 2;
-        g.beginPath();
-        g.moveTo(x + 72, y - 25);
-        g.lineTo(x + 136, y - 25);
-        g.stroke();
-        pixelText('전달', x + 104, y - 9, 8, '#f1dfad', 'center', true);
-        g.fillStyle = '#1b1526';
-        g.fillRect(sx - 3, sy - 3, 18, 18);
-        g.fillStyle = '#f0e0b0';
-        g.fillRect(sx, sy, 12, 14);
-        g.fillStyle = '#8a6a3a';
-        g.fillRect(sx, sy, 12, 2);
+        if (transferActive) {
+          const p = (Math.sin(t / 700) + 1) / 2;
+          const sx = x + 72 + (x + 124 - (x + 72)) * p;
+          const sy = y - 32 + Math.sin(t / 180) * 4;
+          g.strokeStyle = 'rgba(255,212,121,0.45)';
+          g.lineWidth = 2;
+          g.beginPath();
+          g.moveTo(x + 72, y - 25);
+          g.lineTo(x + 136, y - 25);
+          g.stroke();
+          pixelText('전달 중', x + 104, y - 9, 8, '#f1dfad', 'center', true);
+          g.fillStyle = '#1b1526';
+          g.fillRect(sx - 3, sy - 3, 18, 18);
+          g.fillStyle = '#f0e0b0';
+          g.fillRect(sx, sy, 12, 14);
+          g.fillStyle = '#8a6a3a';
+          g.fillRect(sx, sy, 12, 2);
+        }
         if (h.status === 'CODEX_DONE') pixelText('+XP', x + 104, y - 9, 10, '#ffd479', 'center', true);
 
         const claudeName = String(h.claude?.name || 'Claude').slice(0, 7);
@@ -2186,10 +2191,10 @@
       function layout() {
         for (const a of agents) {
           const noPid = !Number.isFinite(Number(a.pid));
-          if (noPid && !(a.aiHandoff && a.aiHandoff !== 'IDLE')) stashedIds.add(a.id);
+          if (noPid && (a.state === 'idle' || a.state === 'unknown') && !(a.aiHandoff && a.aiHandoff !== 'IDLE')) stashedIds.add(a.id);
         }
         const floor = agents.filter((a) => !DEAD.has(a.state));
-        for (const a of floor) if (a.state === 'needs_input') stashedIds.delete(a.id);
+        for (const a of floor) if (a.state === 'working' || a.state === 'needs_input') stashedIds.delete(a.id);
         const restingAgents = floor.filter((a) => a.state === 'idle' || a.state === 'unknown' || stashedIds.has(a.id));
         const activeAgents = floor.filter((a) => a.state !== 'idle' && a.state !== 'unknown' && !stashedIds.has(a.id));
         const resting = restingAgents.length + agents.length - floor.length;
@@ -2545,7 +2550,7 @@
             '</div>' +
             '<div class="sp-actions">' +
             (controllable ? '<button class="primary" data-sp="screen" data-id="' + esc(a.id) + '">대화창</button><button data-sp="enter" data-id="' + esc(a.id) + '">Enter</button>' : '') +
-            '<button data-sp="focus-map" data-id="' + esc(a.id) + '">지도 위치</button>' +
+            '<button data-sp="focus-map" data-id="' + esc(a.id) + '">캐릭터 찾기</button>' +
             (controllable ? '<button class="danger" data-sp="kill" data-id="' + esc(a.id) + '">세션 종료…</button>' : '') +
             (a.state === 'failed' ? '<button data-sp="stash" data-id="' + esc(a.id) + '">숨기기</button>' : '') +
             '</div>' +
@@ -4642,7 +4647,7 @@
         if (a.state === 'needs_input') {
           html += canControl
             ? '<div class="jm-guide"><b>⚠ 위기 대처 방법</b>1. 아래 “요청 내용 확인”으로 질문을 읽습니다.<br>2. 권한 요청이면 Y/N, 선택 질문이면 번호를 보냅니다.<br>3. 판단이 어렵거나 민감한 작업이면 실제 터미널에서 확인합니다.</div>'
-            : '<div class="jm-guide"><b>⚠ 직접 응답할 수 없는 기록</b>제어할 pid가 없습니다. 같은 프로젝트에서 새 세션을 열어 작업을 이어가세요.</div>';
+            : '<div class="jm-guide"><b>⚠ 기존 세션에 연결할 수 없음</b>터미널 연결 정보(pid)가 없어 이 기록에는 답변을 보낼 수 없습니다. 아래 버튼으로 같은 작업 폴더에서 새 세션을 시작할 수 있습니다.</div>';
         }
         const jobs = teamOf(a) === 'codex' ? CODEX_JOBS : CLAUDE_JOBS;
         html += '<div class="jm-meta">직업 변경 · 선택한 직업은 이 브라우저에 저장됩니다.</div>';
@@ -4665,6 +4670,9 @@
           html += menuButton('focus', '', '⌘', '판단이 어려우면 실제 터미널', '파일 삭제·권한 변경처럼 민감한 요청은 터미널에서 자세히 확인합니다.');
           html += menuButton('stash', '', '−', '잠시 지도에서 숨기기', '세션은 종료하지 않고 지도에서만 치웁니다.');
           html += menuButton('kill', 'danger', '×', '작업을 취소하고 종료', '더 진행하면 안 되는 세션일 때만 종료합니다.');
+        } else if (a.state === 'needs_input') {
+          html += menuButton('retry', 'primary', '+', '같은 프로젝트에서 새 세션 시작', tool + '를 같은 작업 폴더에서 새로 열고, 연결할 수 없는 기존 기록은 숨깁니다.');
+          html += menuButton('stash', '', '−', '기존 기록만 숨기기', '새 세션을 열지 않고 제어할 수 없는 기록만 지도에서 치웁니다.');
         } else if (canControl) {
           html += menuButton('screen', 'primary', '↗', '대화창에서 보기', '터미널 화면을 읽고, 답변/선택지를 웹에서 보냅니다.');
           html += menuButton('focus', '', '⌘', '실제 터미널 앞으로', 'macOS 터미널 창을 직접 확인해야 할 때만 씁니다.');
@@ -4898,10 +4906,13 @@
         } else if (action === 'enter') {
           sendAgentInput(m.a, '', true);
         } else if (action === 'focus-map') {
-          scrollY = Math.max(0, Math.min(Math.max(0, contentH - window.innerHeight + 40), m.y - window.innerHeight * 0.46));
-          mouse.x = m.x;
-          mouse.y = m.y - scrollY;
-          toast((m.a.name || '(무명)').slice(0, 36));
+          const pos = separatedMemberPositions(latestT).get(m) || { x: m.x, y: m.y };
+          scrollY = Math.max(0, Math.min(Math.max(0, contentH - window.innerHeight + 40), pos.y - window.innerHeight * 0.46));
+          mouse.x = pos.x;
+          mouse.y = pos.y - scrollY;
+          burst(pos.x, pos.y - 38, stateColor(m.a), '여기!');
+          openJobMenu(m, Math.max(12, Math.min(window.innerWidth - 24, pos.x + 42)), Math.max(70, pos.y - scrollY - 40));
+          toast((m.a.name || '(무명)').slice(0, 36) + ' 위치를 찾았어요');
         } else if (action === 'stash') {
           stashedIds.add(m.a.id);
           layout();
