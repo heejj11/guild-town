@@ -1250,6 +1250,44 @@
         M: '#5d5f6d', m: '#3f414c', C: '#8b6a4c', A: '#f0b35a', F: '#ff784a',
         T: '#5c5aa6', t: '#36366f', Y: '#d7b44a', K: '#513725', B: '#6a4d3b',
       };
+      const JOB_ATLAS_CELL = 362;
+      const JOB_ATLAS_INDEX = {
+        apprentice_mage: 0, mage: 1, archmage: 2, summoner: 3,
+        sage: 4, recruit: 5, warrior: 6, knight: 7,
+        smith: 8, berserker: 9, courier: 10,
+      };
+      const jobAtlas = new Image();
+      let jobAtlasReady = false;
+      jobAtlas.onload = () => (jobAtlasReady = true);
+      jobAtlas.onerror = () => console.warn('직업 스프라이트 시트를 불러오지 못해 Canvas 캐릭터로 대체합니다.');
+      jobAtlas.src = 'assets/guild-jobs.png';
+
+      function drawJobSprite(x, feetY, key, dim, working, t, size = 104) {
+        if (!jobAtlasReady || JOB_ATLAS_INDEX[key] == null) return false;
+        const index = JOB_ATLAS_INDEX[key];
+        const col = index % 4;
+        const row = Math.floor(index / 4);
+        const bob = Math.sin(t / 330 + hashOf(key) * 0.01) * 1.5;
+        const action = working ? Math.sin(t / 150 + hashOf(key)) : 0;
+        const lift = working ? Math.abs(action) * 2.5 : 0;
+        g.save();
+        g.globalAlpha = dim ? 0.62 : 1;
+        g.translate(Math.round(x + action * 1.5), Math.round(feetY + bob - lift));
+        if (working && (key === 'warrior' || key === 'berserker' || key === 'smith')) g.rotate(action * 0.025);
+        g.drawImage(
+          jobAtlas,
+          col * JOB_ATLAS_CELL,
+          row * JOB_ATLAS_CELL,
+          JOB_ATLAS_CELL,
+          JOB_ATLAS_CELL,
+          -size / 2,
+          -size * 0.91,
+          size,
+          size,
+        );
+        g.restore();
+        return true;
+      }
 
       function drawWeapon(g, sx, sy, PX, SPR_W, kind, hot, t) {
         const wood = '#8a6a3a',
@@ -2118,6 +2156,7 @@
         g.beginPath();
         g.ellipse(x, y + 1, SPR_W * 0.25, 4, 0, 0, 7);
         g.fill();
+        if (drawJobSprite(x, y, key, false, animate, t, 82)) return;
         g.save();
         g.translate(sx, sy);
         g.scale(scale, scale);
@@ -4479,7 +4518,10 @@
             drawKnockdown(pos.x, pos.y, cls, true, t);
             pixelText('실패', pos.x, pos.y - 26, 10, '#e07a7a', 'center', true);
           } else {
-            drawCuteCharacter(sx + lean, sy + (need ? 5 : 0), classKey, cls, dim, working, t);
+            const spriteFeetY = pos.y + (need ? 5 : 0);
+            if (!drawJobSprite(pos.x + lean, spriteFeetY, classKey, dim, working, t)) {
+              drawCuteCharacter(sx + lean, sy + (need ? 5 : 0), classKey, cls, dim, working, t);
+            }
           }
 
           const badgeY = sy - 8;

@@ -20,7 +20,8 @@ python3 -m http.server 8080
 브라우저에서 `http://localhost:8080/guild.html`을 열면 됩니다.
 
 ## 구성
-- `guild.html`: 단독 실행 가능한 길드 타운 웹 화면
+- `guild.html`: 길드 타운 웹 화면
+- `assets/guild-jobs.png`: 직업별 투명 픽셀 스프라이트 시트
 - `SPEC.md`: 구현 스펙과 디자인 방향
 
-외부 빌드 과정 없이 정적 HTML 파일만 서빙하면 됩니다.
+외부 빌드 과정 없이 폴더 전체를 정적 파일로 서빙하면 됩니다.
