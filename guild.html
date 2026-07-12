@@ -884,7 +884,7 @@
     <div id="helpPanel" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
       <div class="help-card">
         <div class="help-head"><h2 id="helpTitle">길드 타운 사용법</h2><button id="helpClose" type="button">닫기</button></div>
-        <p>Claude와 Codex 세션을 길드원처럼 보여주는 실시간 현황판입니다. 서버에 연결되지 않으면 안전한 데모 데이터가 표시됩니다.</p>
+        <p>Claude와 Codex 세션을 길드원처럼 보여주는 실시간 현황판입니다. 실제 응답과 터미널 제어에는 cc-dashboard 서버 연결이 필요합니다.</p>
         <h3>빠르게 시작하기</h3>
         <ul>
           <li>길드원 클릭: 상태 확인, 대화창 열기, 터미널 포커스</li>
@@ -904,6 +904,7 @@
       // ── 라이브 데이터: 대시보드 서버 SSE에 그대로 붙음 ───────────────────────
       const API = location.protocol + '//' + location.hostname + ':7317';
       const CANDIDATE_MODE = location.search.includes('candidates');
+      const DEMO_MODE = new URLSearchParams(location.search).get('demo') === '1';
       const CANDIDATE_PAGE = Math.max(1, parseInt(new URLSearchParams(location.search).get('page') || '1', 10) || 1);
       const connEl = document.getElementById('conn');
       const countEl = document.getElementById('count');
@@ -969,18 +970,20 @@
             } catch {}
           };
           eventSource.onerror = () => {
-            connEl.textContent = '데모(오프라인)';
+            connEl.textContent = DEMO_MODE ? '체험 모드' : '서버 오프라인';
             connEl.className = 'off';
-            connEl.title = '대시보드 서버에 연결되지 않아 데모 데이터를 표시합니다.';
+            connEl.title = DEMO_MODE
+              ? 'URL의 demo=1 옵션으로 예시 세션을 표시합니다.'
+              : '대시보드 서버 127.0.0.1:7317에 연결되지 않아 실제 세션을 표시하거나 응답할 수 없습니다.';
             if (!agents.length) {
-              agents = DEMO;
+              agents = DEMO_MODE ? DEMO : [];
               layout();
             }
           };
         } catch {
-          connEl.textContent = '데모(오프라인)';
+          connEl.textContent = DEMO_MODE ? '체험 모드' : '서버 오프라인';
           connEl.className = 'off';
-          agents = DEMO;
+          agents = DEMO_MODE ? DEMO : [];
           layout();
         }
       }
@@ -1275,13 +1278,15 @@
         const index = JOB_ATLAS_INDEX[key];
         const col = index % 4;
         const row = Math.floor(index / 4);
-        const bob = Math.sin(t / 330 + hashOf(key) * 0.01) * 1.5;
-        const action = working ? Math.sin(t / 150 + hashOf(key)) : 0;
-        const lift = working ? Math.abs(action) * 2.5 : 0;
+        const breath = Math.sin(t / 520 + hashOf(key) * 0.01);
+        const bob = breath * 0.8;
+        const action = working ? Math.sin(t / 290 + hashOf(key)) : 0;
+        const lift = working ? Math.max(0, action) * 1.1 : 0;
         g.save();
         g.globalAlpha = dim ? 0.62 : 1;
-        g.translate(Math.round(x + action * 1.5), Math.round(feetY + bob - lift));
-        if (working && (key === 'warrior' || key === 'berserker' || key === 'smith')) g.rotate(action * 0.025);
+        g.translate(x + action * 0.65, feetY + bob - lift);
+        if (working && (key === 'warrior' || key === 'berserker' || key === 'smith')) g.rotate(action * 0.009);
+        g.scale(1 - breath * 0.0025, 1 + breath * 0.0025);
         g.drawImage(
           jobAtlas,
           col * JOB_ATLAS_CELL,
@@ -2174,9 +2179,10 @@
       function drawHandoffScene(h, t) {
         const x = h.x, y = h.y;
         const cardTop = y - 126;
+        const actorY = y + 18;
         // 대시보드 카드가 아니라 길드 회의용 양탄자와 나무 푯말로 표현한다.
         g.fillStyle = 'rgba(47,31,37,0.88)';
-        rr(x - 8, y - 64, 222, 90, 18);
+        rr(x - 8, y - 64, 222, 112, 18);
         g.fill();
         g.strokeStyle = '#9b6c55';
         g.lineWidth = 3;
@@ -2191,8 +2197,8 @@
         pixelText(handoffLabel(h.status), x + 107, cardTop + 29, 8, '#f1dfad', 'center');
         const transferActive = h.status === 'READY_FOR_CODEX' || h.status === 'READY_FOR_CODEX_REVIEW';
         const workActive = h.status === 'CODEX_RUNNING';
-        drawMiniAgent(h.claude, x + 42, y - 2, h.status === 'READY_FOR_CODEX' ? 'courier' : 'mage', t, transferActive);
-        drawMiniAgent(h.codex, x + 154, y - 2, workActive ? 'smith' : 'warrior', t, transferActive || workActive);
+        drawMiniAgent(h.claude, x + 42, actorY, h.status === 'READY_FOR_CODEX' ? 'courier' : 'mage', t, transferActive);
+        drawMiniAgent(h.codex, x + 154, actorY, workActive ? 'smith' : 'warrior', t, transferActive || workActive);
 
         const dialogue = handoffDialogue(h.status);
         const line = dialogue[transferActive || workActive ? Math.floor(t / 1800) % dialogue.length : 0];
@@ -2201,16 +2207,16 @@
         else drawBubble(line.text, x + 202, bubbleY, '#8fd0ff', 'right');
 
         if (transferActive) {
-          const p = (Math.sin(t / 700) + 1) / 2;
+          const p = (1 - Math.cos(t / 920)) / 2;
           const sx = x + 72 + (x + 124 - (x + 72)) * p;
-          const sy = y - 32 + Math.sin(t / 180) * 4;
+          const sy = actorY - 32 - Math.sin(p * Math.PI) * 4;
           g.strokeStyle = 'rgba(255,212,121,0.45)';
           g.lineWidth = 2;
           g.beginPath();
-          g.moveTo(x + 72, y - 25);
-          g.lineTo(x + 136, y - 25);
+          g.moveTo(x + 72, actorY - 25);
+          g.lineTo(x + 136, actorY - 25);
           g.stroke();
-          pixelText('전달 중', x + 104, y - 9, 8, '#f1dfad', 'center', true);
+          pixelText('전달 중', x + 104, actorY - 9, 8, '#f1dfad', 'center', true);
           g.fillStyle = '#1b1526';
           g.fillRect(sx - 3, sy - 3, 18, 18);
           g.fillStyle = '#f0e0b0';
@@ -2218,17 +2224,17 @@
           g.fillStyle = '#8a6a3a';
           g.fillRect(sx, sy, 12, 2);
         }
-        if (h.status === 'CODEX_DONE') pixelText('+XP', x + 104, y - 9, 10, '#ffd479', 'center', true);
+        if (h.status === 'CODEX_DONE') pixelText('+XP', x + 104, actorY - 9, 10, '#ffd479', 'center', true);
 
         const claudeName = String(h.claude?.name || 'Claude').slice(0, 7);
         const codexName = String(h.codex?.name || 'Codex').slice(0, 7);
         g.fillStyle = '#1b1526';
-        rr(x - 2, y + 5, 88, 17, 5);
+        rr(x - 2, actorY + 5, 88, 17, 5);
         g.fill();
-        rr(x + 110, y + 5, 88, 17, 5);
+        rr(x + 110, actorY + 5, 88, 17, 5);
         g.fill();
-        pixelText('Claude · ' + claudeName, x + 42, y + 17, 7, '#c8a2ff', 'center', true);
-        pixelText('Codex · ' + codexName, x + 154, y + 17, 7, '#8fd0ff', 'center', true);
+        pixelText('Claude · ' + claudeName, x + 42, actorY + 17, 7, '#c8a2ff', 'center', true);
+        pixelText('Codex · ' + codexName, x + 154, actorY + 17, 7, '#8fd0ff', 'center', true);
       }
 
       // ── 상태 ─────────────────────────────────────────────────────────────
@@ -4437,6 +4443,20 @@
           my = mouse.y + scrollY;
 
         drawTownMap(t);
+
+        if (!agents.length && connEl.classList.contains('off') && townMap) {
+          const ox = townMap.plaza.x;
+          const oy = townMap.y + 118;
+          g.fillStyle = 'rgba(20,14,26,0.94)';
+          rr(ox - 190, oy - 42, 380, 84, 12);
+          g.fill();
+          g.strokeStyle = '#e07a7a';
+          g.lineWidth = 2;
+          g.stroke();
+          pixelText('실제 세션 서버가 오프라인입니다', ox, oy - 13, 14, '#ffb0a0', 'center', true);
+          pixelText('127.0.0.1:7317 연결 후 재연결을 누르세요', ox, oy + 11, 10, '#e8e0ef', 'center');
+          pixelText('예시 화면: guild.html?demo=1', ox, oy + 29, 9, '#9aa6c8', 'center');
+        }
 
         for (const b of buildings) {
           drawBuilding(b, t);
