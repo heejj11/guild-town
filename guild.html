@@ -4827,7 +4827,8 @@
           }
           return;
         }
-        closeJobMenu();
+        // 상태/설명처럼 버튼이 아닌 팝업 내부 영역을 눌러도 상세정보를 유지한다.
+        return;
       });
 
       controlPanelEl.addEventListener('click', (e) => {
