@@ -2580,8 +2580,13 @@
       // 이동 경로가 교차해도 캐릭터가 포개지지 않도록 화면 좌표를 매 프레임 보정한다.
       function separatedMemberPositions(t) {
         const positions = new Map(members.map((m) => [m, memberPos(m, t)]));
-        const minDistance = 58;
-        for (let pass = 0; pass < 4; pass++) {
+        const minDistance = 78;
+        const clampToTown = (pos) => {
+          if (!townMap) return;
+          pos.x = Math.min(townMap.x + townMap.w - 42, Math.max(townMap.x + 42, pos.x));
+          pos.y = Math.min(townMap.y + townMap.h - 34, Math.max(townMap.y + 78, pos.y));
+        };
+        for (let pass = 0; pass < 10; pass++) {
           for (let i = 0; i < members.length; i++) {
             for (let j = i + 1; j < members.length; j++) {
               const a = positions.get(members[i]);
@@ -2603,13 +2608,10 @@
               a.y -= uy * push;
               b.x += ux * push;
               b.y += uy * push;
+              // 가장자리 제한으로 다시 포개지는 것을 막기 위해 매 단계마다 보정한다.
+              clampToTown(a);
+              clampToTown(b);
             }
-          }
-        }
-        if (townMap) {
-          for (const pos of positions.values()) {
-            pos.x = Math.min(townMap.x + townMap.w - 38, Math.max(townMap.x + 38, pos.x));
-            pos.y = Math.min(townMap.y + townMap.h - 28, Math.max(townMap.y + 70, pos.y));
           }
         }
         return positions;
@@ -4411,7 +4413,7 @@
 
           if (working || need) drawMonster(a, monsterX, monsterY, t, need);
 
-          const hit = mx >= pos.x - 28 && mx <= pos.x + 28 && my >= pos.y - 54 && my <= pos.y + 10;
+          const hit = mx >= pos.x - 36 && mx <= pos.x + 36 && my >= pos.y - 64 && my <= pos.y + 18;
           const selected = jobmenuFor?.a?.id === a.id || controlPanelFor?.id === a.id;
           if (hit) {
             hover = { m, sx, sy };
@@ -5174,9 +5176,12 @@
         const currentPositions = separatedMemberPositions(latestT);
         for (const m of members) {
           const pos = currentPositions.get(m);
-          if (cx >= pos.x - 30 && cx <= pos.x + 30 && my >= pos.y - 58 && my <= pos.y + 14) hits.push({ m, y: pos.y });
+          if (cx >= pos.x - 36 && cx <= pos.x + 36 && my >= pos.y - 64 && my <= pos.y + 18) {
+            const centerY = pos.y - 24;
+            hits.push({ m, distance: Math.hypot(cx - pos.x, (my - centerY) * 0.8) });
+          }
         }
-        return hits.sort((a, b) => b.y - a.y).map((h) => h.m);
+        return hits.sort((a, b) => a.distance - b.distance).map((h) => h.m);
       }
       function hitTest(cx, cy) {
         return hitTestAll(cx, cy)[0] || null;
