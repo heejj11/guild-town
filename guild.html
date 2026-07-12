@@ -1003,8 +1003,11 @@
             .then((r) => r.json())
             .then((data) => {
               terminalControl.set(pid, data?.ok === true);
-              const tail = String(data?.screen || '').slice(-1800);
-              terminalNeedsInput.set(pid, /(?:would you like|do you want|approve|approval|permission|allow this|press enter|enter to confirm|\[y\/n\]|\[y\/N\]|허용하시|승인하시|계속하시겠|응답해|선택해|번호를 선택)/i.test(tail));
+              // 화면 전체의 과거 대화가 아니라 터미널 맨 아래의 실제 대화형 프롬프트만 본다.
+              // 일반 설명에 permission/선택 같은 단어가 포함된 경우를 응답 요청으로 오인하지 않는다.
+              const tail = String(data?.screen || '').slice(-700);
+              const interactivePrompt = /(?:\[y\/n\]|\[Y\/n\]|\(y\/n\)|press enter to confirm|enter to select|would you like to (?:run|allow|approve|continue)|do you want to (?:run|allow|approve|continue)|허용하시겠습니까|승인하시겠습니까|계속하시겠습니까|실행할까요)\s*[?？:]?/i;
+              terminalNeedsInput.set(pid, interactivePrompt.test(tail));
             })
             .catch(() => terminalControl.set(pid, false))
             .finally(() => {
@@ -1017,9 +1020,7 @@
       function needsResponse(a) {
         if (a?.state === 'needs_input') return true;
         const pid = Number(a?.pid);
-        if (Number.isFinite(pid) && terminalNeedsInput.get(pid) === true) return true;
-        const message = String(a?.lastMessage || '').trim();
-        return (a?.state === 'idle' || a?.state === 'unknown') && /(?:\?|？|까요|나요|습니까|선택해 주세요|알려 주세요)[.!\s]*$/.test(message);
+        return Number.isFinite(pid) && terminalNeedsInput.get(pid) === true;
       }
 
       function isMapControllable(a) {
