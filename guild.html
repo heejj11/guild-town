@@ -2391,10 +2391,10 @@
         const floor = agents.filter((a) => !DEAD.has(a.state));
         for (const a of floor) if (a.state === 'working' || a.state === 'needs_input') stashedIds.delete(a.id);
         const restingAgents = floor.filter(
-          (a) => a.state === 'idle' || a.state === 'unknown' || stashedIds.has(a.id) || !isMapControllable(a),
+          (a) => stashedIds.has(a.id) || !isMapControllable(a),
         );
         const activeAgents = floor.filter(
-          (a) => a.state !== 'idle' && a.state !== 'unknown' && !stashedIds.has(a.id) && isMapControllable(a),
+          (a) => !stashedIds.has(a.id) && isMapControllable(a),
         );
         assignDistinctDisplayClasses(activeAgents);
         const resting = restingAgents.length + agents.length - floor.length;
@@ -2554,8 +2554,8 @@
           return shownRestingTeams.has(teamOf(a));
         });
         const visibleByTeam = {
-          claude: visibleAgents.filter((a) => teamOf(a) !== 'codex' && a.state !== 'failed' && a.state !== 'idle' && a.state !== 'unknown'),
-          codex: visibleAgents.filter((a) => teamOf(a) === 'codex' && a.state !== 'failed' && a.state !== 'idle' && a.state !== 'unknown'),
+          claude: visibleAgents.filter((a) => teamOf(a) !== 'codex' && a.state !== 'failed' && isMapControllable(a)),
+          codex: visibleAgents.filter((a) => teamOf(a) === 'codex' && a.state !== 'failed' && isMapControllable(a)),
           failed: visibleAgents.filter((a) => a.state === 'failed'),
           restClaude: visibleAgents.filter((a) => teamOf(a) !== 'codex' && (a.state === 'idle' || a.state === 'unknown')),
           restCodex: visibleAgents.filter((a) => teamOf(a) === 'codex' && (a.state === 'idle' || a.state === 'unknown')),
@@ -2600,7 +2600,7 @@
             };
             const workSlot = a.state === 'failed'
               ? knockSlot
-              : a.state === 'idle' || a.state === 'unknown'
+              : (a.state === 'idle' || a.state === 'unknown') && !isMapControllable(a)
                 ? restSlot
                 : a.state === 'needs_input'
                   ? { x: spreadSlot.x, y: spreadSlot.y }
