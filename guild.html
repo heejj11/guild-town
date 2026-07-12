@@ -162,6 +162,22 @@
         font-size: 11px;
         line-height: 1.45;
       }
+      #jobmenu .jm-guide {
+        margin: 8px 0 10px;
+        padding: 10px 11px;
+        border: 1px solid rgba(255, 207, 90, 0.34);
+        border-radius: 9px;
+        background: rgba(255, 180, 48, 0.09);
+        color: #eee5d2;
+        font-size: 11px;
+        line-height: 1.55;
+      }
+      #jobmenu .jm-guide b {
+        display: block;
+        margin-bottom: 3px;
+        color: #ffcf5a;
+        font-size: 12px;
+      }
       #jobmenu .jm-status {
         display: grid;
         grid-template-columns: 54px 1fr;
@@ -2035,12 +2051,12 @@
         g.restore();
       }
 
-      function handoffLines(status) {
-        if (status === 'CODEX_RUNNING') return ['구현 중...', '화이팅!'];
-        if (status === 'CODEX_DONE') return ['완료!', '확인할게'];
-        if (status === 'CODEX_FAILED') return ['막혔어', '같이 보자'];
-        if (status === 'READY_FOR_CODEX_REVIEW') return ['리뷰 부탁', '볼게'];
-        return ['이거 맡아줘', '접수!'];
+      function handoffDialogue(status) {
+        if (status === 'CODEX_RUNNING') return [{ team: 'codex', text: '구현 중...' }, { team: 'claude', text: '화이팅!' }];
+        if (status === 'CODEX_DONE') return [{ team: 'codex', text: '완료!' }, { team: 'claude', text: '확인할게' }];
+        if (status === 'CODEX_FAILED') return [{ team: 'codex', text: '막혔어' }, { team: 'claude', text: '같이 보자' }];
+        if (status === 'READY_FOR_CODEX_REVIEW') return [{ team: 'claude', text: '리뷰 부탁' }, { team: 'codex', text: '볼게' }];
+        return [{ team: 'claude', text: '이거 맡아줘' }, { team: 'codex', text: '접수!' }];
       }
       function handoffLabel(status) {
         if (status === 'READY_FOR_CODEX') return 'Codex에 넘김';
@@ -2072,7 +2088,7 @@
         const cardTop = y - 126;
         const cardW = 222;
         g.fillStyle = 'rgba(15,11,23,0.66)';
-        rr(x - 8, cardTop, cardW, 130, 8);
+        rr(x - 8, cardTop, cardW, 152, 8);
         g.fill();
         g.strokeStyle = 'rgba(200,162,255,0.38)';
         g.lineWidth = 1;
@@ -2083,11 +2099,11 @@
         drawMiniAgent(h.claude, x + 42, y - 2, h.status === 'READY_FOR_CODEX' ? 'courier' : 'mage', t);
         drawMiniAgent(h.codex, x + 154, y - 2, h.status === 'CODEX_RUNNING' ? 'smith' : 'warrior', t);
 
-        const lines = handoffLines(h.status);
-        const turn = Math.floor(t / 1800) % 2;
+        const dialogue = handoffDialogue(h.status);
+        const line = dialogue[Math.floor(t / 1800) % dialogue.length];
         const bubbleY = cardTop + 57;
-        if (turn === 0) drawBubble(lines[0], x + 8, bubbleY, '#8fd0ff', 'left');
-        else drawBubble(lines[1], x + 202, bubbleY, '#ffd479', 'right');
+        if (line.team === 'claude') drawBubble(line.text, x + 8, bubbleY, '#c8a2ff', 'left');
+        else drawBubble(line.text, x + 202, bubbleY, '#8fd0ff', 'right');
 
         const p = (Math.sin(t / 700) + 1) / 2;
         const sx = x + 72 + (x + 124 - (x + 72)) * p;
@@ -2106,6 +2122,11 @@
         g.fillStyle = '#8a6a3a';
         g.fillRect(sx, sy, 12, 2);
         if (h.status === 'CODEX_DONE') pixelText('+XP', x + 104, y - 9, 10, '#ffd479', 'center', true);
+
+        const claudeName = String(h.claude?.name || 'Claude').slice(0, 7);
+        const codexName = String(h.codex?.name || 'Codex').slice(0, 7);
+        pixelText('Claude · ' + claudeName, x + 42, y + 14, 7, '#c8a2ff', 'center', true);
+        pixelText('Codex · ' + codexName, x + 154, y + 14, 7, '#8fd0ff', 'center', true);
       }
 
       // ── 상태 ─────────────────────────────────────────────────────────────
@@ -2554,6 +2575,44 @@
           x: base.x + jitter,
           y: base.y + Math.sin(t / 720 + m.phase) * 1.1 - step * 1.5,
         };
+      }
+
+      // 이동 경로가 교차해도 캐릭터가 포개지지 않도록 화면 좌표를 매 프레임 보정한다.
+      function separatedMemberPositions(t) {
+        const positions = new Map(members.map((m) => [m, memberPos(m, t)]));
+        const minDistance = 58;
+        for (let pass = 0; pass < 4; pass++) {
+          for (let i = 0; i < members.length; i++) {
+            for (let j = i + 1; j < members.length; j++) {
+              const a = positions.get(members[i]);
+              const b = positions.get(members[j]);
+              let dx = b.x - a.x;
+              let dy = b.y - a.y;
+              let distance = Math.hypot(dx, dy);
+              if (distance >= minDistance) continue;
+              if (distance < 0.01) {
+                const angle = (hashOf(members[i].a.id + members[j].a.id) % 628) / 100;
+                dx = Math.cos(angle);
+                dy = Math.sin(angle);
+                distance = 1;
+              }
+              const push = (minDistance - distance) / 2;
+              const ux = dx / distance;
+              const uy = dy / distance;
+              a.x -= ux * push;
+              a.y -= uy * push;
+              b.x += ux * push;
+              b.y += uy * push;
+            }
+          }
+        }
+        if (townMap) {
+          for (const pos of positions.values()) {
+            pos.x = Math.min(townMap.x + townMap.w - 38, Math.max(townMap.x + 38, pos.x));
+            pos.y = Math.min(townMap.y + townMap.h - 28, Math.max(townMap.y + 70, pos.y));
+          }
+        }
+        return positions;
       }
 
       function drawKnockdown(cx, y, cls, dim, t) {
@@ -4304,8 +4363,9 @@
 
         for (const h of handoffs) drawHandoffScene(h, t);
 
-        for (const m of [...members].sort((a, b) => a.y - b.y)) {
-          const pos = memberPos(m, t);
+        const currentPositions = separatedMemberPositions(t);
+        for (const m of [...members].sort((a, b) => currentPositions.get(a).y - currentPositions.get(b).y)) {
+          const pos = currentPositions.get(m);
           const a = m.a;
           const classKey = classKeyOf(a);
           const cls = CLASSES[classKey] || CLASSES.mage;
@@ -4580,7 +4640,15 @@
         html += '<b>도구</b><span>' + esc(tool) + ' · ' + esc(cls.name) + '</span>';
         html += '<b>상태</b><span>' + esc(state) + (canControl ? ' · 웹에서 조작 가능' : ' · pid 없음') + '</span>';
         html += '<b>위치</b><span>' + esc(groupName(a.project)) + '</span>';
+        if ((a.state === 'needs_input' || a.state === 'failed') && a.lastMessage) {
+          html += '<b>최근 내용</b><span>' + esc(String(a.lastMessage).slice(0, 120)) + '</span>';
+        }
         html += '</div>';
+        if (a.state === 'needs_input') {
+          html += canControl
+            ? '<div class="jm-guide"><b>⚠ 위기 대처 방법</b>1. 아래 “요청 내용 확인”으로 질문을 읽습니다.<br>2. 권한 요청이면 Y/N, 선택 질문이면 번호를 보냅니다.<br>3. 판단이 어렵거나 민감한 작업이면 실제 터미널에서 확인합니다.</div>'
+            : '<div class="jm-guide"><b>⚠ 직접 응답할 수 없는 기록</b>제어할 pid가 없습니다. 같은 프로젝트에서 새 세션을 열어 작업을 이어가세요.</div>';
+        }
         const jobs = teamOf(a) === 'codex' ? CODEX_JOBS : CLAUDE_JOBS;
         html += '<div class="jm-meta">직업 변경 · 선택한 직업은 이 브라우저에 저장됩니다.</div>';
         html += '<div class="jm-row">';
@@ -4597,6 +4665,11 @@
             html += menuButton('focus', '', '⌘', '실제 터미널 열기', '남아 있는 터미널 창을 앞으로 가져옵니다.');
           }
           html += menuButton('stash', '', '−', '실패 기록 숨기기', '새 세션을 열지 않고 넉다운 기록만 지도에서 치웁니다.');
+        } else if (a.state === 'needs_input' && canControl) {
+          html += menuButton('screen', 'primary', '!', '요청 내용 확인하고 답하기', '현재 화면을 읽은 뒤 Y/N, 번호 선택 또는 직접 메시지를 보냅니다.');
+          html += menuButton('focus', '', '⌘', '판단이 어려우면 실제 터미널', '파일 삭제·권한 변경처럼 민감한 요청은 터미널에서 자세히 확인합니다.');
+          html += menuButton('stash', '', '−', '잠시 지도에서 숨기기', '세션은 종료하지 않고 지도에서만 치웁니다.');
+          html += menuButton('kill', 'danger', '×', '작업을 취소하고 종료', '더 진행하면 안 되는 세션일 때만 종료합니다.');
         } else if (canControl) {
           html += menuButton('screen', 'primary', '↗', '대화창에서 보기', '터미널 화면을 읽고, 답변/선택지를 웹에서 보냅니다.');
           html += menuButton('focus', '', '⌘', '실제 터미널 앞으로', 'macOS 터미널 창을 직접 확인해야 할 때만 씁니다.');
@@ -5098,8 +5171,9 @@
       function hitTestAll(cx, cy) {
         const my = cy + scrollY;
         const hits = [];
+        const currentPositions = separatedMemberPositions(latestT);
         for (const m of members) {
-          const pos = memberPos(m, latestT);
+          const pos = currentPositions.get(m);
           if (cx >= pos.x - 30 && cx <= pos.x + 30 && my >= pos.y - 58 && my <= pos.y + 14) hits.push({ m, y: pos.y });
         }
         return hits.sort((a, b) => b.y - a.y).map((h) => h.m);
