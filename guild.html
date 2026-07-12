@@ -3,7 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>길드 홀 — cc-dashboard (프로토타입)</title>
+    <meta name="description" content="Claude와 Codex 세션을 한눈에 보고 제어하는 픽셀 아트 길드 타운" />
+    <meta name="theme-color" content="#17131f" />
+    <title>길드 타운 — AI 세션 현황</title>
     <style>
       * {
         margin: 0;
@@ -21,6 +23,22 @@
       #scene {
         display: block;
         image-rendering: pixelated;
+        touch-action: none;
+      }
+      button,
+      a,
+      textarea,
+      input,
+      canvas {
+        -webkit-tap-highlight-color: transparent;
+      }
+      button:focus-visible,
+      a:focus-visible,
+      textarea:focus-visible,
+      input:focus-visible,
+      canvas:focus-visible {
+        outline: 3px solid #ffd479;
+        outline-offset: 2px;
       }
       #tip {
         position: fixed;
@@ -82,6 +100,23 @@
         text-shadow: 0 1px 2px #000;
         backdrop-filter: blur(8px);
       }
+      #hud .hud-row {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      #hud button {
+        min-height: 30px;
+        padding: 4px 9px;
+        border: 1px solid rgba(221, 205, 255, 0.2);
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.06);
+        color: #eee8f8;
+        font: 700 11px Inter, ui-sans-serif, system-ui, sans-serif;
+        cursor: pointer;
+      }
       #hud a {
         color: #9ad;
       }
@@ -90,6 +125,9 @@
       }
       #conn.off {
         color: #e07a7a;
+      }
+      #conn.connecting {
+        color: #ffd479;
       }
       /* 전직/건물 메뉴 */
       #jobmenu,
@@ -528,6 +566,36 @@
         color: #f3eff8;
         backdrop-filter: blur(8px);
       }
+      #sessionPanel .sp-head {
+        position: sticky;
+        top: -12px;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin: -12px -12px 10px;
+        padding: 12px;
+        background: rgba(13, 10, 20, 0.97);
+        border-bottom: 1px solid rgba(221, 205, 255, 0.12);
+      }
+      #sessionPanel .sp-head .sp-title {
+        margin: 0;
+      }
+      #sessionPanel .sp-close {
+        display: none;
+      }
+      #sessionPanel .sp-search {
+        width: 100%;
+        min-height: 38px;
+        margin-bottom: 10px;
+        padding: 8px 10px;
+        border: 1px solid rgba(221, 205, 255, 0.18);
+        border-radius: 8px;
+        background: #0f0b17;
+        color: #f3eff8;
+        font: 12px Inter, ui-sans-serif, system-ui, sans-serif;
+      }
       #sessionPanel .sp-title {
         color: #ffd479;
         font-weight: 800;
@@ -647,9 +715,83 @@
         border-color: rgba(126, 224, 160, 0.36);
         background: rgba(126, 224, 160, 0.12);
       }
+      #sessionPanel button.danger {
+        color: #ffb3b3;
+        border-color: rgba(224, 122, 122, 0.3);
+      }
+      #helpPanel {
+        position: fixed;
+        inset: 0;
+        z-index: 80;
+        display: none;
+        place-items: center;
+        padding: 20px;
+        background: rgba(7, 5, 11, 0.72);
+        backdrop-filter: blur(6px);
+      }
+      #helpPanel.open {
+        display: grid;
+      }
+      #helpPanel .help-card {
+        width: min(520px, 100%);
+        max-height: min(680px, calc(100vh - 40px));
+        overflow: auto;
+        padding: 20px;
+        border: 1px solid rgba(185, 151, 255, 0.65);
+        border-radius: 14px;
+        background: #12101a;
+        box-shadow: 0 22px 64px rgba(0, 0, 0, 0.68);
+      }
+      #helpPanel .help-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      #helpPanel h2 {
+        color: #ffd479;
+        font-size: 18px;
+      }
+      #helpPanel h3 {
+        margin: 16px 0 7px;
+        color: #c8a2ff;
+        font-size: 13px;
+      }
+      #helpPanel p,
+      #helpPanel li {
+        color: #d5cede;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      #helpPanel ul {
+        padding-left: 20px;
+      }
+      #helpPanel button {
+        min-height: 36px;
+        padding: 7px 11px;
+        border: 1px solid rgba(221, 205, 255, 0.2);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.06);
+        color: #f3eff8;
+        cursor: pointer;
+      }
       @media (max-width: 899px) {
         #sessionPanel {
+          top: 62px;
+          right: 10px;
+          bottom: 10px;
+          left: 10px;
           display: none;
+          width: auto;
+          z-index: 55;
+          box-shadow: 0 22px 64px rgba(0, 0, 0, 0.72);
+        }
+        #sessionPanel.open {
+          display: block;
+        }
+        #sessionPanel .sp-close {
+          display: inline-flex;
         }
         #controlPanel {
           top: 64px;
@@ -667,20 +809,59 @@
           right: 10px;
           width: auto;
         }
+        #hud {
+          top: 8px;
+          right: 8px;
+          left: 8px;
+          max-width: none;
+          padding: 7px 9px;
+          text-align: left;
+        }
+        #hud .hud-row {
+          justify-content: space-between;
+        }
+        #hud .hud-detail {
+          display: none;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
       }
     </style>
   </head>
   <body>
-    <canvas id="scene"></canvas>
-    <div id="tip"></div>
-    <div id="jobmenu"></div>
-    <div id="sessionmenu"></div>
-    <div id="toast"></div>
+    <canvas id="scene" tabindex="0" role="application" aria-label="길드 타운 지도. 길드원을 클릭하면 세션 메뉴가 열립니다."></canvas>
+    <div id="tip" role="tooltip"></div>
+    <div id="jobmenu" role="dialog" aria-modal="false" aria-label="길드원 메뉴"></div>
+    <div id="sessionmenu" role="dialog" aria-modal="false" aria-label="새 세션 시작"></div>
+    <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
     <div id="candidateNav"></div>
-    <div id="sessionPanel"></div>
-    <div id="controlPanel"></div>
+    <aside id="sessionPanel" aria-label="세션 상태 보드"></aside>
+    <section id="controlPanel" role="dialog" aria-modal="true" aria-label="세션 대화창"></section>
+    <div id="helpPanel" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="help-card">
+        <div class="help-head"><h2 id="helpTitle">길드 타운 사용법</h2><button id="helpClose" type="button">닫기</button></div>
+        <p>Claude와 Codex 세션을 길드원처럼 보여주는 실시간 현황판입니다. 서버에 연결되지 않으면 안전한 데모 데이터가 표시됩니다.</p>
+        <h3>빠르게 시작하기</h3>
+        <ul>
+          <li>길드원 클릭: 상태 확인, 대화창 열기, 터미널 포커스</li>
+          <li>건물 클릭: 해당 프로젝트에서 새 Claude/Codex 세션 시작</li>
+          <li>세션 보드: 응답이 필요한 세션을 먼저 확인하고 이름으로 검색</li>
+          <li>지도 이동: 마우스 휠, 터치 드래그, 또는 키보드 ↑/↓</li>
+        </ul>
+        <h3>상태 안내</h3>
+        <p>주황색은 응답 필요, 파란색은 작업 중, 빨간색은 실패 상태입니다. 세션 종료는 확인 후에만 실행됩니다.</p>
+      </div>
+    </div>
     <div id="hud">
-      <div>🏰 <b>길드 타운</b> · <span id="count">0</span>명 · 연결 <span id="conn">…</span> · <a href="/">대시보드</a></div>
+      <div class="hud-row"><span>🏰 <b>길드 타운</b> <span class="hud-detail">· <span id="count">0</span>명 · 연결 </span><span id="conn" class="connecting">연결 중…</span></span><span><button id="sessionToggle" type="button" aria-controls="sessionPanel" aria-expanded="false">세션 보기</button> <button id="reconnectButton" type="button">재연결</button> <button id="helpButton" type="button" aria-haspopup="dialog">도움말</button> <a class="hud-detail" href="/">대시보드</a></span></div>
     </div>
 
     <script>
@@ -694,7 +875,17 @@
       const hudEl = document.getElementById('hud');
       const candidateNavEl = document.getElementById('candidateNav');
       const sessionPanelEl = document.getElementById('sessionPanel');
+      const sessionToggleEl = document.getElementById('sessionToggle');
+      const reconnectButtonEl = document.getElementById('reconnectButton');
+      const helpPanelEl = document.getElementById('helpPanel');
+      const helpButtonEl = document.getElementById('helpButton');
+      const helpCloseEl = document.getElementById('helpClose');
       let agents = [];
+      let eventSource = null;
+      let sessionPanelVisible = window.innerWidth >= 900;
+      let sessionFilter = '';
+      let lastFocusedElement = null;
+      const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       const DEMO = [
         { id: 'd1', name: '백엔드 코드 pull', kind: 'claude', state: 'working', project: '/Project/api', lastMessage: '리포 최신화 중…', tokens: { context: 90000, window: 258000 } },
@@ -720,9 +911,17 @@
       }
 
       function connectSSE() {
+        if (eventSource) eventSource.close();
+        connEl.textContent = '연결 중…';
+        connEl.className = 'connecting';
         try {
-          const es = new EventSource(API + '/api/agents/stream');
-          es.onmessage = (e) => {
+          eventSource = new EventSource(API + '/api/agents/stream');
+          eventSource.onopen = () => {
+            connEl.textContent = '온라인';
+            connEl.className = '';
+            connEl.title = '';
+          };
+          eventSource.onmessage = (e) => {
             try {
               const list = JSON.parse(e.data);
               if (Array.isArray(list)) {
@@ -733,15 +932,18 @@
               }
             } catch {}
           };
-          es.onerror = () => {
+          eventSource.onerror = () => {
             connEl.textContent = '데모(오프라인)';
             connEl.className = 'off';
+            connEl.title = '대시보드 서버에 연결되지 않아 데모 데이터를 표시합니다.';
             if (!agents.length) {
               agents = DEMO;
               layout();
             }
           };
         } catch {
+          connEl.textContent = '데모(오프라인)';
+          connEl.className = 'off';
           agents = DEMO;
           layout();
         }
@@ -1950,6 +2152,7 @@
         cv.style.width = window.innerWidth + 'px';
         cv.style.height = window.innerHeight + 'px';
         layout();
+        syncSessionPanel();
       }
 
       function layout() {
@@ -2241,8 +2444,19 @@
 
       function renderSessionPanel() {
         if (!sessionPanelEl) return;
+        const searchWasFocused = document.activeElement && document.activeElement.id === 'sessionSearch';
+        const query = sessionFilter.trim().toLocaleLowerCase('ko');
         const rows = members
           .slice()
+          .filter((m) => {
+            if (!query) return true;
+            const a = m.a;
+            return [a.name, a.project, groupName(a.project), toolLabel(a), stateLabel(a.state)]
+              .filter(Boolean)
+              .join(' ')
+              .toLocaleLowerCase('ko')
+              .includes(query);
+          })
           .sort((a, b) => {
             const rank = (m) => (m.a.state === 'needs_input' ? 0 : m.a.state === 'working' ? 1 : m.a.state === 'failed' ? 2 : 3);
             return rank(a) - rank(b) || a.no - b.no;
@@ -2253,7 +2467,8 @@
         const noPidCount = agents.filter((a) => !Number.isFinite(Number(a.pid))).length;
         const liveCount = agents.filter((a) => Number.isFinite(Number(a.pid))).length;
         let html =
-          '<div class="sp-title">세션 상태 보드</div>' +
+          '<div class="sp-head"><div class="sp-title">세션 상태 보드</div><button class="sp-close" data-sp-global="close" aria-label="세션 보드 닫기">닫기</button></div>' +
+          '<input id="sessionSearch" class="sp-search" type="search" value="' + esc(sessionFilter) + '" placeholder="세션·프로젝트 검색" aria-label="세션 검색" />' +
           '<div class="sp-stats">' +
           '<div class="sp-stat need"><b>' + needCount + '</b><span>응답 필요</span></div>' +
           '<div class="sp-stat"><b>' + liveCount + '</b><span>웹 조작 가능</span></div>' +
@@ -2276,7 +2491,7 @@
           }
         }
         if (!rows.length) {
-          html += '<div class="sp-meta">표시할 세션이 없습니다.</div>';
+          html += '<div class="sp-meta">' + (query ? '검색 결과가 없습니다.' : '표시할 세션이 없습니다.') + '</div>';
         }
         for (const m of rows) {
           const a = m.a;
@@ -2299,12 +2514,19 @@
             '<div class="sp-actions">' +
             (controllable ? '<button class="primary" data-sp="screen" data-id="' + esc(a.id) + '">대화창</button><button data-sp="enter" data-id="' + esc(a.id) + '">Enter</button>' : '') +
             '<button data-sp="focus-map" data-id="' + esc(a.id) + '">지도 위치</button>' +
-            (controllable ? '<button data-sp="kill" data-id="' + esc(a.id) + '">세션 종료</button>' : '') +
+            (controllable ? '<button class="danger" data-sp="kill" data-id="' + esc(a.id) + '">세션 종료…</button>' : '') +
             (a.state === 'failed' ? '<button data-sp="stash" data-id="' + esc(a.id) + '">숨기기</button>' : '') +
             '</div>' +
             '</div>';
         }
         sessionPanelEl.innerHTML = html;
+        if (searchWasFocused) {
+          const input = document.getElementById('sessionSearch');
+          if (input) {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+          }
+        }
       }
 
       let latestT = 0;
@@ -2401,7 +2623,7 @@
         g.fillText(text, x, y);
       }
       function esc(s) {
-        return String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+        return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       }
 
       function drawCandidate(style, x, y, t) {
@@ -4037,6 +4259,7 @@
       let hoverBuilding = null;
 
       function frame(t) {
+        if (REDUCED_MOTION) t = 0;
         latestT = t;
         const W = window.innerWidth,
           H = window.innerHeight;
@@ -4324,6 +4547,16 @@
       let controlPanelFor = null;
       let pickerMembers = [];
       let toastTimer = null;
+      function rememberFocus() {
+        lastFocusedElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      }
+      function restoreFocus() {
+        if (lastFocusedElement && document.contains(lastFocusedElement)) lastFocusedElement.focus();
+        lastFocusedElement = null;
+      }
+      function focusFirstButton(container) {
+        requestAnimationFrame(() => container.querySelector('button, textarea, input')?.focus());
+      }
       function toast(msg) {
         toastEl.textContent = msg;
         toastEl.style.display = 'block';
@@ -4331,6 +4564,7 @@
         toastTimer = setTimeout(() => (toastEl.style.display = 'none'), 2600);
       }
       function openJobMenu(m, clientX = mouse.x, clientY = mouse.y) {
+        rememberFocus();
         closeSessionMenu();
         jobmenuFor = m;
         const a = m.a;
@@ -4368,6 +4602,7 @@
         jm.style.display = 'block';
         jm.style.left = Math.min(window.innerWidth - 350, clientX) + 'px';
         jm.style.top = Math.min(window.innerHeight - jm.offsetHeight - 10, clientY) + 'px';
+        focusFirstButton(jm);
       }
       function menuButton(action, tone, icon, title, desc) {
         return (
@@ -4378,11 +4613,14 @@
         );
       }
       function closeJobMenu() {
+        const wasOpen = jm.style.display === 'block';
         jobmenuFor = null;
         pickerMembers = [];
         jm.style.display = 'none';
+        if (wasOpen) restoreFocus();
       }
       function openControlPanel(a) {
+        rememberFocus();
         controlPanelFor = a;
         const cls = CLASSES[classKeyOf(a)] || CLASSES.mage;
         const state = stateLabel(a.state);
@@ -4426,12 +4664,16 @@
           '<div id="controlScreen" class="cp-terminal" style="display:none">읽는 중...</div>' +
           '</div>';
         controlPanelEl.style.display = 'block';
+        focusFirstButton(controlPanelEl);
       }
       function closeControlPanel() {
+        const wasOpen = controlPanelEl.style.display === 'block';
         controlPanelFor = null;
         controlPanelEl.style.display = 'none';
+        if (wasOpen) restoreFocus();
       }
       function openMemberPicker(list, clientX, clientY) {
+        rememberFocus();
         closeSessionMenu();
         pickerMembers = list;
         let html = '<div class="jm-head">겹친 길드원 선택</div>';
@@ -4444,6 +4686,7 @@
         jm.style.display = 'block';
         jm.style.left = Math.min(window.innerWidth - 220, clientX) + 'px';
         jm.style.top = Math.min(window.innerHeight - 40 - list.length * 36, clientY) + 'px';
+        focusFirstButton(jm);
       }
       jm.addEventListener('click', (e) => {
         const b = e.target.closest('button[data-pick]');
@@ -4544,7 +4787,11 @@
         const globalBtn = e.target.closest('button[data-sp-global]');
         if (globalBtn) {
           const action = globalBtn.dataset.spGlobal;
-          if (action === 'hide-dead') {
+          if (action === 'close') {
+            sessionPanelVisible = false;
+            syncSessionPanel();
+            sessionToggleEl.focus();
+          } else if (action === 'hide-dead') {
             for (const a of agents) if (a.state === 'done' || a.state === 'failed' || !Number.isFinite(Number(a.pid))) stashedIds.add(a.id);
             layout();
             toast('완료/실패/pid 없음 세션을 정리했어요');
@@ -4577,6 +4824,12 @@
           toast('실패 세션을 막사로 숨겼어요');
         } else if (action === 'kill') {
           killAgent(m.a);
+        }
+      });
+      sessionPanelEl.addEventListener('input', (e) => {
+        if (e.target && e.target.id === 'sessionSearch') {
+          sessionFilter = e.target.value;
+          renderSessionPanel();
         }
       });
 
@@ -4732,6 +4985,7 @@
           toast(showResting ? '막사 인원을 펼쳤어요' : '쉬는 길드원을 막사에 수납했어요');
           return;
         }
+        rememberFocus();
         closeJobMenu();
         sessionmenuFor = b;
         const buttons = b.command
@@ -4746,10 +5000,13 @@
         sm.style.display = 'block';
         sm.style.left = Math.min(window.innerWidth - 190, clientX) + 'px';
         sm.style.top = Math.min(window.innerHeight - sm.offsetHeight - 10, clientY) + 'px';
+        focusFirstButton(sm);
       }
       function closeSessionMenu() {
+        const wasOpen = sm.style.display === 'block';
         sessionmenuFor = null;
         sm.style.display = 'none';
+        if (wasOpen) restoreFocus();
       }
       async function openTerminalSession(b, command) {
         if (!b.cwd) return toast('폴더를 알 수 없어 시작할 수 없어요');
@@ -4778,6 +5035,42 @@
 
       // ── 입력 ─────────────────────────────────────────────────────────────
       const mouse = { x: -99, y: -99 };
+      let pointerDrag = null;
+      let pointerDragged = false;
+      function syncSessionPanel() {
+        const mobile = window.innerWidth < 900;
+        sessionPanelEl.classList.toggle('open', mobile && sessionPanelVisible);
+        sessionPanelEl.style.display = mobile ? '' : sessionPanelVisible ? 'block' : 'none';
+        sessionToggleEl.setAttribute('aria-expanded', String(sessionPanelVisible));
+        sessionToggleEl.textContent = sessionPanelVisible ? '세션 숨기기' : '세션 보기';
+      }
+      function openHelp() {
+        rememberFocus();
+        helpPanelEl.classList.add('open');
+        helpCloseEl.focus();
+      }
+      function closeHelp() {
+        if (!helpPanelEl.classList.contains('open')) return;
+        helpPanelEl.classList.remove('open');
+        restoreFocus();
+      }
+      sessionToggleEl.addEventListener('click', () => {
+        sessionPanelVisible = !sessionPanelVisible;
+        syncSessionPanel();
+        if (sessionPanelVisible && window.innerWidth < 900) {
+          requestAnimationFrame(() => document.getElementById('sessionSearch')?.focus());
+        }
+      });
+      reconnectButtonEl.addEventListener('click', () => {
+        agents = [];
+        toast('대시보드 서버에 다시 연결하고 있어요');
+        connectSSE();
+      });
+      helpButtonEl.addEventListener('click', openHelp);
+      helpCloseEl.addEventListener('click', closeHelp);
+      helpPanelEl.addEventListener('click', (e) => {
+        if (e.target === helpPanelEl) closeHelp();
+      });
       // 렌더 루프와 무관하게 좌표로 직접 캐릭터 판정 (클릭 타이밍 이슈 방지)
       function hitTestAll(cx, cy) {
         const my = cy + scrollY;
@@ -4806,6 +5099,10 @@
         mouse.x = mouse.y = -99;
       });
       cv.addEventListener('click', (e) => {
+        if (pointerDragged) {
+          pointerDragged = false;
+          return;
+        }
         const hits = hitTestAll(e.clientX, e.clientY);
         const m = hits[0] || null;
         const b = hitBuilding(e.clientX, e.clientY);
@@ -4817,8 +5114,68 @@
           closeSessionMenu();
         }
       });
+      cv.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse') return;
+        pointerDrag = { id: e.pointerId, y: e.clientY, scrollY };
+        pointerDragged = false;
+        cv.setPointerCapture(e.pointerId);
+      });
+      cv.addEventListener('pointermove', (e) => {
+        if (!pointerDrag || pointerDrag.id !== e.pointerId) return;
+        const dy = e.clientY - pointerDrag.y;
+        if (Math.abs(dy) > 6) pointerDragged = true;
+        scrollY = Math.max(0, Math.min(Math.max(0, contentH - window.innerHeight + 40), pointerDrag.scrollY - dy));
+      });
+      const endPointerDrag = (e) => {
+        if (pointerDrag && pointerDrag.id === e.pointerId) pointerDrag = null;
+      };
+      cv.addEventListener('pointerup', endPointerDrag);
+      cv.addEventListener('pointercancel', endPointerDrag);
       window.addEventListener('wheel', (e) => {
         scrollY = Math.max(0, Math.min(Math.max(0, contentH - window.innerHeight + 40), scrollY + e.deltaY));
+      });
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          if (helpPanelEl.classList.contains('open')) closeHelp();
+          else if (controlPanelFor) closeControlPanel();
+          else {
+            closeJobMenu();
+            closeSessionMenu();
+            if (window.innerWidth < 900 && sessionPanelVisible) {
+              sessionPanelVisible = false;
+              syncSessionPanel();
+            }
+          }
+          return;
+        }
+        if (e.key === 'Tab') {
+          const modal = helpPanelEl.classList.contains('open') ? helpPanelEl : controlPanelFor ? controlPanelEl : null;
+          if (modal) {
+            const focusable = [...modal.querySelectorAll('button:not([disabled]), textarea:not([disabled]), input:not([disabled]), a[href]')];
+            if (focusable.length) {
+              const first = focusable[0];
+              const last = focusable[focusable.length - 1];
+              if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+              } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+              }
+            }
+          }
+        }
+        const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
+        if (typing || controlPanelFor || helpPanelEl.classList.contains('open')) return;
+        if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+          e.preventDefault();
+          scrollY = Math.min(Math.max(0, contentH - window.innerHeight + 40), scrollY + (e.key === 'PageDown' ? window.innerHeight * 0.7 : 80));
+        } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+          e.preventDefault();
+          scrollY = Math.max(0, scrollY - (e.key === 'PageUp' ? window.innerHeight * 0.7 : 80));
+        } else if (e.key === '?' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          openHelp();
+        }
       });
       window.addEventListener('resize', resize);
 
