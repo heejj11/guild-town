@@ -581,6 +581,20 @@
         border-radius: 12px;
         color: #f3eff8;
         backdrop-filter: blur(8px);
+        scrollbar-width: thin;
+        scrollbar-color: #6f5a83 #15101d;
+      }
+      #sessionPanel::-webkit-scrollbar {
+        width: 8px;
+      }
+      #sessionPanel::-webkit-scrollbar-track {
+        background: #15101d;
+        border-radius: 8px;
+      }
+      #sessionPanel::-webkit-scrollbar-thumb {
+        background: #6f5a83;
+        border: 2px solid #15101d;
+        border-radius: 8px;
       }
       #sessionPanel .sp-head {
         position: sticky;
@@ -2064,7 +2078,8 @@
       }
       function drawMiniAgent(a, x, y, key, t, animate = false) {
         const cls = CLASSES[key] || CLASSES.mage;
-        const scale = 0.72;
+        // drawCuteCharacter 내부 축소가 이미 있으므로 외부에서는 원본 크기를 유지한다.
+        const scale = 1;
         const animT = animate ? t : 0;
         const sx = Math.round(x - (SPR_W * scale) / 2);
         const sy = Math.round(y - SPR_H * scale + (animate ? Math.sin(t / 260 + x) * 1.2 : 0));
@@ -2209,7 +2224,8 @@
         }
         const W = window.innerWidth;
         const H = window.innerHeight;
-        const sideW = W >= 900 ? 286 : 24;
+        // 세션 패널: left 14 + width 300 + 안전 여백 20.
+        const sideW = W >= 900 ? 334 : 24;
         const areaX = sideW;
         const areaW = Math.max(640, W - areaX - 24);
 
@@ -2292,15 +2308,16 @@
             );
           }
           for (const c of candidates) {
-            const x = Math.min(areaX + areaW - 96, Math.max(areaX + 28, c.x));
+            const x = Math.min(areaX + areaW - 124, Math.max(areaX + 28, c.x));
             const y = Math.min(townY + mapH - 104, Math.max(townY + 36, c.y));
-            const r = { x, y, w: 72, h: 70 };
+            // 본체보다 넓은 이름표까지 포함해 건물 간 충돌을 계산한다.
+            const r = { x, y, w: 112, h: 70 };
             if (reserved.some((z) => rectsOverlap(r, z, 8))) continue;
             if (buildings.some((old) => rectsOverlap(r, { x: old.x, y: old.y, w: old.w, h: old.h + 24 }, pad))) continue;
-            buildings.push({ ...b, x, y, w: 72, h: 48, phase });
+            buildings.push({ ...b, x, y, w: 112, h: 48, phase });
             return;
           }
-          buildings.push({ ...b, x: prefX, y: prefY, w: 72, h: 48, phase });
+          buildings.push({ ...b, x: prefX, y: prefY, w: 112, h: 48, phase });
         }
         baseBuildings.forEach((b, i) => addBuilding(b, specialPos[i].x, specialPos[i].y, i * 7));
         let bi = 0;
