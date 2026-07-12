@@ -2069,22 +2069,25 @@
       }
       function drawHandoffScene(h, t) {
         const x = h.x, y = h.y;
+        const cardTop = y - 126;
+        const cardW = 222;
         g.fillStyle = 'rgba(15,11,23,0.66)';
-        rr(x - 8, y - 78, 222, 82, 8);
+        rr(x - 8, cardTop, cardW, 130, 8);
         g.fill();
         g.strokeStyle = 'rgba(200,162,255,0.38)';
         g.lineWidth = 1;
         g.stroke();
-        pixelText(groupName(h.project), x + 8, y - 58, 13, '#ffd479', 'left', true);
-        pixelText(handoffLabel(h.status), x + 8, y - 42, 9, '#c8a2ff', 'left', true);
-        pixelText(String(h.project || '').slice(-28), x + 8, y - 29, 8, '#9aa6c8', 'left');
+        pixelText(groupName(h.project), x + 8, cardTop + 19, 13, '#ffd479', 'left', true);
+        pixelText(handoffLabel(h.status), x + 8, cardTop + 35, 9, '#c8a2ff', 'left', true);
+        pixelText(String(h.project || '').slice(-28), x + 8, cardTop + 48, 8, '#9aa6c8', 'left');
         drawMiniAgent(h.claude, x + 42, y - 2, h.status === 'READY_FOR_CODEX' ? 'courier' : 'mage', t);
         drawMiniAgent(h.codex, x + 154, y - 2, h.status === 'CODEX_RUNNING' ? 'smith' : 'warrior', t);
 
         const lines = handoffLines(h.status);
         const turn = Math.floor(t / 1800) % 2;
-        if (turn === 0) drawBubble(lines[0], x + 8, y - 86, '#8fd0ff', 'left');
-        else drawBubble(lines[1], x + 202, y - 86, '#ffd479', 'right');
+        const bubbleY = cardTop + 57;
+        if (turn === 0) drawBubble(lines[0], x + 8, bubbleY, '#8fd0ff', 'left');
+        else drawBubble(lines[1], x + 202, bubbleY, '#ffd479', 'right');
 
         const p = (Math.sin(t / 700) + 1) / 2;
         const sx = x + 72 + (x + 124 - (x + 72)) * p;
@@ -2208,7 +2211,7 @@
           w: areaW + 32,
           h: mapH,
           plaza,
-          handoffZone: { x: areaX + areaW * 0.5 - 260, y: townY + 70, w: 520, h: 145 },
+          handoffZone: { x: areaX + areaW * 0.5 - 260, y: townY + 52, w: 520, h: 190 },
           claudeZone: { x: areaX + 62, y: townY + 250, w: Math.max(300, areaW * 0.38), h: Math.max(250, mapH * 0.42) },
           codexZone: { x: areaX + areaW - Math.max(300, areaW * 0.38) - 62, y: townY + 250, w: Math.max(300, areaW * 0.38), h: Math.max(250, mapH * 0.42) },
           knockZone: { x: areaX + areaW * 0.5 - 210, y: townY + mapH - 164, w: 420, h: 104 },
@@ -2299,7 +2302,7 @@
             claude: list.find((a) => a.kind !== 'codex') || { id: 'npc-c-' + project, name: 'Claude', kind: 'claude', state: 'idle', project, tokens: { context: 50000, window: 258000 }, aiHandoff: status },
             codex: list.find((a) => a.kind === 'codex') || { id: 'npc-x-' + project, name: 'Codex', kind: 'codex', state: 'idle', project, tokens: { context: 50000, window: 258000 }, aiHandoff: status },
             x: townMap.handoffZone.x + 18 + (hi % 2) * 258,
-            y: townMap.handoffZone.y + 118 + Math.floor(hi / 2) * 136,
+            y: townMap.handoffZone.y + 154 + Math.floor(hi / 2) * 136,
           });
           hi++;
           if (hi >= 2) break;
