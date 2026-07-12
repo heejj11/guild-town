@@ -1638,12 +1638,12 @@
           pixelText(mark, x + 16, y - 4, 12, '#fff6ff', 'center', true);
         }
         function drawDecorations() {
-          signPost(m.claudeZone.x + 42, m.claudeZone.y + 48, 'MAG');
+          signPost(m.claudeZone.x + 42, m.claudeZone.y + 48, '마법');
           magicCircle(m.claudeZone.x + m.claudeZone.w - 84, m.claudeZone.y + 82, 34, t);
           banner(m.claudeZone.x + 54, m.claudeZone.y + m.claudeZone.h - 42, '#5c5aa6', 'C');
           flowerPatch(m.claudeZone.x + m.claudeZone.w * 0.45, m.claudeZone.y + m.claudeZone.h - 34, ['#c8a2ff', '#9effe8', '#ffd479']);
 
-          signPost(m.codexZone.x + 44, m.codexZone.y + 48, 'CODE');
+          signPost(m.codexZone.x + 44, m.codexZone.y + 48, '단련');
           anvil(m.codexZone.x + m.codexZone.w - 96, m.codexZone.y + 82);
           trainingDummy(m.codexZone.x + 64, m.codexZone.y + m.codexZone.h - 48);
           banner(m.codexZone.x + m.codexZone.w - 58, m.codexZone.y + m.codexZone.h - 42, '#8b4d36', 'X');
@@ -1654,20 +1654,13 @@
           flowerPatch(p.x + 62, p.y + 88, ['#9effe8', '#ffd479', '#ff95b1']);
         }
         function zone(z, label, color) {
-          g.strokeStyle = color;
-          g.lineWidth = 1;
-          rr(z.x, z.y, z.w, z.h, 12);
-          g.stroke();
+          // 전체 테두리는 캐릭터를 가로지르는 선처럼 보여 제거하고 제목표만 남긴다.
           g.fillStyle = 'rgba(15,11,23,0.58)';
           rr(z.x + 8, z.y + 8, Math.min(112, 26 + label.length * 10), 20, 5);
           g.fill();
           pixelText(label, z.x + 16, z.y + 23, 10, '#d8d1e8', 'left', true);
         }
 
-        zone(m.handoffZone, '핸드오프', 'rgba(200,162,255,0.28)');
-        zone(m.claudeZone, 'Claude', 'rgba(120,170,230,0.28)');
-        zone(m.codexZone, 'Codex', 'rgba(230,170,110,0.28)');
-        zone(m.knockZone, '넉다운', 'rgba(220,120,140,0.24)');
         drawDecorations();
 
         tree(m.x + 88, m.y + 100, 1);
@@ -2087,22 +2080,27 @@
       function drawHandoffScene(h, t) {
         const x = h.x, y = h.y;
         const cardTop = y - 126;
-        const cardW = 222;
-        g.fillStyle = 'rgba(15,11,23,0.66)';
-        rr(x - 8, cardTop, cardW, 152, 8);
+        // 대시보드 카드가 아니라 길드 회의용 양탄자와 나무 푯말로 표현한다.
+        g.fillStyle = 'rgba(47,31,37,0.88)';
+        rr(x - 8, y - 64, 222, 90, 18);
         g.fill();
-        g.strokeStyle = 'rgba(200,162,255,0.38)';
-        g.lineWidth = 1;
+        g.strokeStyle = '#9b6c55';
+        g.lineWidth = 3;
         g.stroke();
-        pixelText(groupName(h.project), x + 8, cardTop + 19, 13, '#ffd479', 'left', true);
-        pixelText(handoffLabel(h.status), x + 8, cardTop + 35, 9, '#c8a2ff', 'left', true);
-        pixelText(String(h.project || '').slice(-28), x + 8, cardTop + 48, 8, '#9aa6c8', 'left');
+        g.fillStyle = '#5a3f28';
+        rr(x + 16, cardTop + 2, 182, 34, 7);
+        g.fill();
+        g.strokeStyle = '#c8955b';
+        g.lineWidth = 2;
+        g.stroke();
+        pixelText(groupName(h.project) + ' 길드 회의', x + 107, cardTop + 16, 11, '#ffd479', 'center', true);
+        pixelText(handoffLabel(h.status), x + 107, cardTop + 29, 8, '#f1dfad', 'center');
         drawMiniAgent(h.claude, x + 42, y - 2, h.status === 'READY_FOR_CODEX' ? 'courier' : 'mage', t);
         drawMiniAgent(h.codex, x + 154, y - 2, h.status === 'CODEX_RUNNING' ? 'smith' : 'warrior', t);
 
         const dialogue = handoffDialogue(h.status);
         const line = dialogue[Math.floor(t / 1800) % dialogue.length];
-        const bubbleY = cardTop + 57;
+        const bubbleY = cardTop + 42;
         if (line.team === 'claude') drawBubble(line.text, x + 8, bubbleY, '#c8a2ff', 'left');
         else drawBubble(line.text, x + 202, bubbleY, '#8fd0ff', 'right');
 
@@ -2126,8 +2124,13 @@
 
         const claudeName = String(h.claude?.name || 'Claude').slice(0, 7);
         const codexName = String(h.codex?.name || 'Codex').slice(0, 7);
-        pixelText('Claude · ' + claudeName, x + 42, y + 14, 7, '#c8a2ff', 'center', true);
-        pixelText('Codex · ' + codexName, x + 154, y + 14, 7, '#8fd0ff', 'center', true);
+        g.fillStyle = '#1b1526';
+        rr(x - 2, y + 5, 88, 17, 5);
+        g.fill();
+        rr(x + 110, y + 5, 88, 17, 5);
+        g.fill();
+        pixelText('Claude · ' + claudeName, x + 42, y + 17, 7, '#c8a2ff', 'center', true);
+        pixelText('Codex · ' + codexName, x + 154, y + 17, 7, '#8fd0ff', 'center', true);
       }
 
       // ── 상태 ─────────────────────────────────────────────────────────────
@@ -2571,43 +2574,31 @@
         return { x: m.x, y: m.y };
       }
 
-      // 레이아웃 결과를 결정론적으로 한 번 더 벌린다. 시간 기반 이동이나 장애물 반발은 사용하지 않는다.
+      // 팀별 독립 격자에 한 명씩 배치한다. 격자 칸은 캐릭터 전체 크기보다 커서 서로 겹칠 수 없다.
       function separatedMemberPositions(t) {
-        const positions = new Map(members.map((m) => [m, memberPos(m, t)]));
-        const minDistance = 92;
-        const clampToTown = (pos) => {
-          if (!townMap) return;
-          pos.x = Math.min(townMap.x + townMap.w - 42, Math.max(townMap.x + 42, pos.x));
-          pos.y = Math.min(townMap.y + townMap.h - 34, Math.max(townMap.y + 78, pos.y));
+        const positions = new Map();
+        if (!townMap) return new Map(members.map((m) => [m, memberPos(m, t)]));
+        const groups = {
+          claude: members.filter((m) => m.a.state !== 'failed' && teamOf(m.a) !== 'codex'),
+          codex: members.filter((m) => m.a.state !== 'failed' && teamOf(m.a) === 'codex'),
+          failed: members.filter((m) => m.a.state === 'failed'),
         };
-        for (let pass = 0; pass < 12; pass++) {
-          for (let i = 0; i < members.length; i++) {
-            for (let j = i + 1; j < members.length; j++) {
-              const a = positions.get(members[i]);
-              const b = positions.get(members[j]);
-              let dx = b.x - a.x;
-              let dy = b.y - a.y;
-              let distance = Math.hypot(dx, dy);
-              if (distance >= minDistance) continue;
-              if (distance < 0.01) {
-                const angle = (hashOf(members[i].a.id + members[j].a.id) % 628) / 100;
-                dx = Math.cos(angle);
-                dy = Math.sin(angle);
-                distance = 1;
-              }
-              const push = (minDistance - distance) / 2;
-              const ux = dx / distance;
-              const uy = dy / distance;
-              a.x -= ux * push;
-              a.y -= uy * push;
-              b.x += ux * push;
-              b.y += uy * push;
-              // 가장자리 제한으로 다시 포개지는 것을 막기 위해 매 단계마다 보정한다.
-              clampToTown(a);
-              clampToTown(b);
-            }
-          }
-        }
+        const placeGroup = (list, zone, topPadding = 104) => {
+          const stepX = 112;
+          const stepY = 118;
+          const cols = Math.max(1, Math.floor((zone.w - 72) / stepX));
+          const usedW = (cols - 1) * stepX;
+          const startX = zone.x + (zone.w - usedW) / 2;
+          list.forEach((m, index) => {
+            positions.set(m, {
+              x: startX + (index % cols) * stepX,
+              y: zone.y + topPadding + Math.floor(index / cols) * stepY,
+            });
+          });
+        };
+        placeGroup(groups.claude, townMap.claudeZone);
+        placeGroup(groups.codex, townMap.codexZone);
+        placeGroup(groups.failed, townMap.knockZone, 86);
         return positions;
       }
 
