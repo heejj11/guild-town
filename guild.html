@@ -1006,28 +1006,18 @@
       // ── 직업 정의 (베이스 스프라이트 + 색 + 무기 + 오라) ──────────────────
       // base: 'mage'(Claude 계열) / 'warrior'(Codex 계열)
       const CLASSES = {
-        apprentice_mage: { name: '견습 마법사', base: 'mage', main: '#5aa0d0', robe: '#4a6ba0', weapon: 'staff', line: 'claude' },
-        mage: { name: '마법사', base: 'mage', main: '#6b3fa0', robe: '#7b5fd0', weapon: 'staff', line: 'claude' },
-        archmage: { name: '대마법사', base: 'mage', main: '#a03fb0', robe: '#9b3fd0', weapon: 'staff', aura: '#e0a0ff', line: 'claude' },
-        summoner: { name: '소환사', base: 'mage', main: '#2f9f8f', robe: '#3aa877', weapon: 'orb', aura: '#8fe0d0', line: 'claude' },
-        sage: { name: '현자', base: 'mage', main: '#c0a040', robe: '#8a7a40', weapon: 'book', line: 'claude' },
-        recruit: { name: '견습병', base: 'warrior', main: '#7a8088', robe: '#6a7a6a', weapon: 'sword', line: 'codex' },
-        warrior: { name: '전사', base: 'warrior', main: '#37b3c9', robe: '#37a877', weapon: 'sword', line: 'codex' },
-        knight: { name: '기사', base: 'warrior', main: '#c9c9d6', robe: '#8a9ab0', weapon: 'sword', aura: '#cfe0ff', line: 'codex' },
-        smith: { name: '대장장이', base: 'warrior', main: '#c98a3a', robe: '#a8683a', weapon: 'hammer', line: 'codex' },
-        berserker: { name: '광전사', base: 'warrior', main: '#c93a3a', robe: '#a83a3a', weapon: 'axe', aura: '#ff9a7a', line: 'codex' },
-        courier: { name: '전령', base: 'mage', main: '#d0b040', robe: '#c8a83a', weapon: 'scroll', line: 'any' },
+        apprentice_mage: { name: '견습 마법사', base: 'mage', main: '#6f568e', robe: '#493b63', weapon: 'staff', line: 'claude' },
+        mage: { name: '마법사', base: 'mage', main: '#7553a8', robe: '#4b356f', weapon: 'staff', line: 'claude' },
+        archmage: { name: '대마법사', base: 'mage', main: '#8b5ac8', robe: '#45306f', weapon: 'staff', aura: '#d8a6ff', line: 'claude' },
+        summoner: { name: '소환사', base: 'mage', main: '#276f68', robe: '#1d4c49', weapon: 'orb', aura: '#84e2d7', line: 'claude' },
+        sage: { name: '현자', base: 'mage', main: '#3f675f', robe: '#42594f', weapon: 'book', line: 'claude' },
+        recruit: { name: '견습병', base: 'warrior', main: '#73785f', robe: '#545943', weapon: 'sword', line: 'codex' },
+        warrior: { name: '전사', base: 'warrior', main: '#aeb6bd', robe: '#833c42', weapon: 'sword', line: 'codex' },
+        knight: { name: '기사', base: 'warrior', main: '#d1d9e0', robe: '#4f6f9a', weapon: 'sword', aura: '#cfe0ff', line: 'codex' },
+        smith: { name: '대장장이', base: 'warrior', main: '#9b6847', robe: '#6d4937', weapon: 'hammer', line: 'codex' },
+        berserker: { name: '광전사', base: 'warrior', main: '#69676c', robe: '#74383a', weapon: 'axe', aura: '#ff9a7a', line: 'codex' },
+        courier: { name: '전령', base: 'mage', main: '#4f7254', robe: '#3f5d47', weapon: 'scroll', line: 'any' },
       };
-      const CLAUDE_JOBS = ['apprentice_mage', 'mage', 'archmage', 'summoner', 'sage', 'courier'];
-      const CODEX_JOBS = ['recruit', 'warrior', 'knight', 'smith', 'berserker', 'courier'];
-      const JOB_OVERRIDE_KEY = 'guild-town.job-overrides';
-      let jobOverride = {};
-      try {
-        const saved = JSON.parse(localStorage.getItem(JOB_OVERRIDE_KEY) || '{}');
-        if (saved && typeof saved === 'object' && !Array.isArray(saved)) jobOverride = saved;
-      } catch {
-        // 손상된 저장값은 무시하고 자동 직업 배정을 유지한다.
-      }
 
       function autoClass(a) {
         if (a.aiHandoff && /READY|RUNNING/.test(a.aiHandoff)) return 'courier';
@@ -1048,17 +1038,7 @@
       }
 
       function classKeyOf(a) {
-        const saved = jobOverride[a.id];
-        return saved && CLASSES[saved] ? saved : autoClass(a);
-      }
-      function setJobOverride(a, key) {
-        if (key && CLASSES[key]) jobOverride[a.id] = key;
-        else delete jobOverride[a.id];
-        try {
-          localStorage.setItem(JOB_OVERRIDE_KEY, JSON.stringify(jobOverride));
-        } catch {
-          // 저장 공간을 쓸 수 없어도 현재 탭의 전직은 그대로 적용한다.
-        }
+        return autoClass(a);
       }
       function classReason(a) {
         const ctx = (a.tokens && a.tokens.context) || 0;
@@ -1972,6 +1952,10 @@
           oval(cx, cy - 20, 30, 29, main);
         }
 
+        // 직업 정체성의 핵심인 머리 실루엣을 얼굴보다 뒤에 배치한다.
+        drawHairExtra(cx, cy - 4, key, dim);
+        drawHeadgear(cx, cy - 4, key, cls, dim);
+
         if (key === 'sage') {
           fillRound(cx - 24, cy - 14, 48, 32, 14, dim ? '#ddd4c8' : '#f3ead7');
           fillRound(cx - 16, cy - 20, 32, 17, 8, face);
@@ -2008,10 +1992,51 @@
         box(cx - 5, cy + 2, 10, 2, '#8a4f55');
         if (key === 'courier' || key === 'apprentice_mage') box(cx - 2, cy + 3, 4, 1, '#ffe4e4');
 
-        // Job silhouettes without hats: all identity is carried by low props.
+        // 얼굴 위 장비와 상체 소재를 직업별로 분리한다.
+        if (key === 'sage') {
+          box(cx - 18, cy - 18, 14, 3, gold);
+          box(cx + 4, cy - 18, 14, 3, gold);
+          box(cx - 4, cy - 17, 8, 2, gold);
+          fillRound(cx - 18, cy + 5, 36, 22, 10, dim ? '#d8d0c6' : '#f0e6d2');
+          box(cx - 3, cy + 10, 6, 17, '#d1c2ad');
+        } else if (key === 'knight') {
+          box(cx - 25, cy - 24, 50, 7, '#d8e3ef');
+          box(cx - 20, cy - 20, 40, 4, '#566a7d');
+          box(cx - 15, cy - 19, 4, 4, shine);
+          box(cx + 11, cy - 19, 4, 4, shine);
+          fillRound(cx - 37, cy + 1, 18, 18, 7, '#c8d4df');
+          fillRound(cx + 19, cy + 1, 18, 18, 7, '#c8d4df');
+        } else if (key === 'warrior') {
+          fillRound(cx - 38, cy + 2, 17, 16, 6, '#aeb9c3');
+          fillRound(cx + 21, cy + 2, 17, 16, 6, '#aeb9c3');
+          box(cx - 25, cy + 12, 50, 7, '#8f3038');
+        } else if (key === 'recruit') {
+          box(cx - 22, cy + 10, 44, 5, '#5b432e');
+          box(cx - 3, cy + 5, 6, 26, '#8b6b43');
+        } else if (key === 'smith') {
+          fillRound(cx - 20, cy - 22, 14, 9, 4, '#2b2426');
+          fillRound(cx + 6, cy - 22, 14, 9, 4, '#2b2426');
+          box(cx - 6, cy - 20, 12, 3, '#d89b67');
+          fillRound(cx - 23, cy + 8, 46, 29, 8, '#7a4c32');
+          box(cx - 3, cy + 10, 6, 25, '#b76b45');
+        } else if (key === 'berserker') {
+          for (let i = -3; i <= 3; i++) oval(cx + i * 10, cy + 9 + Math.abs(i) * 2, 8, 7, O);
+          box(cx - 24, cy + 13, 48, 7, '#d8c39b');
+        } else if (key === 'courier') {
+          box(cx - 24, cy + 10, 48, 5, '#6f4d2f');
+          box(cx + 18, cy + 8, 7, 28, '#9b6c3b');
+        }
+
+        // 직업별 대표 장비와 작업 모션.
         if (key === 'apprentice_mage' || key === 'mage' || key === 'archmage') {
-          box(cx + 36 + swing, cy - 21, 5, 43, '#8a6a3a');
-          oval(cx + 38 + swing, cy - 25, 9, 9, working ? '#ffe27a' : '#8fd0ff');
+          const staffH = key === 'apprentice_mage' ? 32 : key === 'archmage' ? 54 : 44;
+          const staffX = cx + 36 + swing;
+          box(staffX, cy + 22 - staffH, 5, staffH, '#8a6a3a');
+          oval(staffX + 2, cy + 18 - staffH, key === 'archmage' ? 12 : 9, key === 'archmage' ? 12 : 9, working ? '#ffe27a' : '#8fd0ff');
+          if (key === 'apprentice_mage') {
+            box(cx - 8, cy - 51, 13, 6, '#9b6a4e');
+            box(cx + 9, cy - 44, 8, 5, '#9b6a4e');
+          }
           if (key === 'archmage') {
             for (let i = 0; i < 4; i++) {
               const a = t / 420 + i * 1.57;
@@ -2029,18 +2054,22 @@
           box(cx + 33, cy + 3, 15, 11, '#a03042');
           box(cx - 4, cy + 18, 8, 11, '#fff6ff');
         } else if (key === 'recruit') {
-          box(cx - 42, cy - 9, 5, 33, '#8a6a3a');
-          oval(cx + 30, cy - 16, 5, 5, gold);
+          box(cx - 42, cy - 9, 5, 33, '#9aa0aa');
+          box(cx - 47, cy + 20, 15, 5, '#8a6a3a');
+          fillRound(cx + 22, cy - 2, 24, 31, 10, O);
+          fillRound(cx + 26, cy + 2, 16, 23, 8, '#7b5c38');
+          oval(cx + 34, cy + 13, 4, 4, '#c8b083');
         } else if (key === 'warrior') {
           box(cx - 43 - swing, cy - 17, 5, 42, '#cfd6dd');
           box(cx - 49 - swing, cy + 23, 17, 5, '#8a6a3a');
           fillRound(cx + 22, cy + 9, 14, 8, 5, O);
           fillRound(cx + 25, cy + 11, 8, 4, 3, shine);
         } else if (key === 'knight') {
-          fillRound(cx - 49, cy - 10, 25, 38, 9, O);
-          fillRound(cx - 44, cy - 5, 15, 28, 7, '#d8e3ef');
-          box(cx - 38, cy + 2, 5, 15, '#89a8c8');
-          box(cx + 34 + swing, cy - 18, 5, 40, '#cfd6dd');
+          fillRound(cx - 52, cy - 14, 31, 44, 10, O);
+          fillRound(cx - 47, cy - 9, 21, 34, 8, '#d8e3ef');
+          box(cx - 42, cy - 4, 11, 25, '#4f74a2');
+          box(cx + 36 + swing, cy - 29, 5, 55, '#cfd6dd');
+          box(cx + 32 + swing, cy - 32, 13, 7, '#e8eef8');
         } else if (key === 'smith') {
           fillRound(cx - 20, cy + 2, 40, 34, 8, O);
           fillRound(cx - 15, cy + 7, 30, 24, 6, '#b76b45');
@@ -2049,6 +2078,8 @@
         } else if (key === 'berserker') {
           box(cx - 49 - swing, cy - 16, 21, 31, '#c0c6cc');
           box(cx - 31 - swing, cy - 5, 5, 43, '#8a6a3a');
+          box(cx + 29 + swing, cy - 16, 21, 31, '#c0c6cc');
+          box(cx + 27 + swing, cy - 5, 5, 43, '#8a6a3a');
         } else if (key === 'courier') {
           fillRound(cx - 39, cy - 1, 13, 38, 6, O);
           fillRound(cx - 36, cy + 3, 7, 31, 4, '#d2a756');
@@ -4655,6 +4686,7 @@
         let html = '<div class="jm-head">' + m.no + '. ' + esc((a.name || '(무명)').slice(0, 30)) + '</div>';
         html += '<div class="jm-status">';
         html += '<b>도구</b><span>' + esc(tool) + ' · ' + esc(cls.name) + '</span>';
+        html += '<b>자동 직업</b><span>' + esc(classReason(a)) + '</span>';
         html += '<b>상태</b><span>' + esc(state) + (canControl ? ' · 웹에서 조작 가능' : ' · pid 없음') + '</span>';
         html += '<b>위치</b><span>' + esc(groupName(a.project)) + '</span>';
         if ((a.state === 'needs_input' || a.state === 'failed') && a.lastMessage) {
@@ -4666,14 +4698,6 @@
             ? '<div class="jm-guide"><b>⚠ 위기 대처 방법</b>1. 아래 “요청 내용 확인”으로 질문을 읽습니다.<br>2. 권한 요청이면 Y/N, 선택 질문이면 번호를 보냅니다.<br>3. 판단이 어렵거나 민감한 작업이면 실제 터미널에서 확인합니다.</div>'
             : '<div class="jm-guide"><b>⚠ 기존 세션에 연결할 수 없음</b>터미널 연결 정보(pid)가 없어 이 기록에는 답변을 보낼 수 없습니다. 아래 버튼으로 같은 작업 폴더에서 새 세션을 시작할 수 있습니다.</div>';
         }
-        const jobs = teamOf(a) === 'codex' ? CODEX_JOBS : CLAUDE_JOBS;
-        html += '<div class="jm-meta">직업 변경 · 선택한 직업은 이 브라우저에 저장됩니다.</div>';
-        html += '<div class="jm-row">';
-        for (const key of jobs) {
-          const selected = classKeyOf(a) === key;
-          html += '<button class="' + (selected ? 'primary' : '') + '" data-job="' + esc(key) + '">' + esc(CLASSES[key].name) + '</button>';
-        }
-        html += '<button data-job="auto">자동 배정</button></div>';
         html += '<div class="jm-actions">';
         if (a.state === 'failed') {
           html += menuButton('retry', 'primary', '↻', '같은 프로젝트에서 다시 시작', tool + ' 새 세션을 열고 이 넉다운 기록을 자동으로 숨깁니다.');
@@ -4795,17 +4819,6 @@
           const m = pickerMembers[Number(b.dataset.pick)];
           closeJobMenu();
           if (m) openJobMenu(m, mouse.x, mouse.y);
-          return;
-        }
-        const job = e.target.closest('button[data-job]')?.dataset.job;
-        if (job && jobmenuFor) {
-          const a = jobmenuFor.a;
-          setJobOverride(a, job === 'auto' ? null : job);
-          const next = CLASSES[classKeyOf(a)] || CLASSES.mage;
-          burst(jobmenuFor.x, jobmenuFor.y - 42, next.aura || next.main, '전직!');
-          closeJobMenu();
-          layout();
-          toast(job === 'auto' ? '직업을 자동 배정으로 되돌렸어요' : next.name + ' 전직 완료!');
           return;
         }
         const action = e.target.closest('button[data-action]')?.dataset.action;
