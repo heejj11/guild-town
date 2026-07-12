@@ -673,8 +673,14 @@
         border-radius: 9px;
       }
       #sessionPanel .sp-item.need {
-        background: rgba(255, 207, 90, 0.08);
-        border-color: rgba(255, 207, 90, 0.28);
+        background: rgba(255, 116, 64, 0.13);
+        border-color: rgba(255, 160, 72, 0.68);
+        box-shadow: 0 0 0 1px rgba(255, 86, 54, 0.16), 0 0 16px rgba(255, 92, 48, 0.12);
+        animation: urgent-card-pulse 1.35s ease-in-out infinite;
+      }
+      @keyframes urgent-card-pulse {
+        0%, 100% { border-color: rgba(255, 160, 72, 0.5); transform: translateX(0); }
+        50% { border-color: rgba(255, 92, 54, 0.95); transform: translateX(2px); }
       }
       #sessionPanel .sp-item.working {
         background: rgba(143, 208, 255, 0.075);
@@ -4483,10 +4489,16 @@
 
           // 위기일 때만 발판 링을 표시해 시선을 분산시키지 않는다.
           if (need) {
-            g.strokeStyle = 'rgba(240,170,40,' + (0.55 + 0.3 * Math.sin(t / 180)) + ')';
+            const urgentPulse = REDUCED_MOTION ? 0.5 : (Math.sin(t / 150) + 1) / 2;
+            g.strokeStyle = 'rgba(255,76,46,' + (0.62 + urgentPulse * 0.32) + ')';
+            g.lineWidth = 3;
+            g.beginPath();
+            g.ellipse(pos.x, pos.y + 2, 32 + urgentPulse * 9, 10 + urgentPulse * 3, 0, 0, 7);
+            g.stroke();
+            g.strokeStyle = 'rgba(255,196,70,' + (0.35 + (1 - urgentPulse) * 0.45) + ')';
             g.lineWidth = 2;
             g.beginPath();
-            g.ellipse(pos.x, pos.y + 2, SPR_W * 0.42, 7, 0, 0, 7);
+            g.ellipse(pos.x, pos.y + 2, 43 + urgentPulse * 8, 14 + urgentPulse * 3, 0, 0, 7);
             g.stroke();
           }
 
@@ -4541,7 +4553,7 @@
           let bub = '',
             bcol = '#fff';
           if (failed) (bub = '실패'), (bcol = '#e07a7a');
-          else if (need) (bub = '위기'), (bcol = '#ffcf5a');
+          else if (need) (bub = '긴급'), (bcol = '#ff784a');
           else if (working && hover?.m === m) (bub = '전투'), (bcol = '#8fd0ff');
           if (bub) {
             const by = badgeY;
@@ -4554,6 +4566,25 @@
             g.lineWidth = 1;
             g.stroke();
             pixelText(bub, statusX, by + 1, 10, bcol, 'center');
+          }
+          if (need) {
+            const urgentPulse = REDUCED_MOTION ? 0 : Math.sin(t / 140) * 3;
+            const alertY = spriteTop - 35 + urgentPulse;
+            g.fillStyle = '#4a1616';
+            rr(pos.x - 11, alertY - 12, 22, 22, 7);
+            g.fill();
+            g.strokeStyle = '#ff784a';
+            g.lineWidth = 2;
+            g.stroke();
+            pixelText('!', pos.x, alertY + 4, 16, '#fff0c2', 'center', true);
+
+            g.fillStyle = 'rgba(74,22,22,0.94)';
+            rr(pos.x - 39, pos.y + 12, 78, 18, 5);
+            g.fill();
+            g.strokeStyle = '#ff784a';
+            g.lineWidth = 1;
+            g.stroke();
+            pixelText('응답 필요!', pos.x, pos.y + 25, 10, '#ffe08a', 'center', true);
           }
           const moveReason = !failed && hover?.m === m && (need ? '도움 요청' : classKey === 'courier' ? '전령 전달' : '');
           if (moveReason) {
