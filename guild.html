@@ -4590,7 +4590,14 @@
         }
         html += '<button data-job="auto">자동 배정</button></div>';
         html += '<div class="jm-actions">';
-        if (canControl) {
+        if (a.state === 'failed') {
+          html += menuButton('retry', 'primary', '↻', '같은 프로젝트에서 다시 시작', tool + ' 새 세션을 열고 이 넉다운 기록을 자동으로 숨깁니다.');
+          if (canControl) {
+            html += menuButton('screen', '', '↗', '오류 화면 확인', '마지막 터미널 화면에서 실패 원인을 확인합니다.');
+            html += menuButton('focus', '', '⌘', '실제 터미널 열기', '남아 있는 터미널 창을 앞으로 가져옵니다.');
+          }
+          html += menuButton('stash', '', '−', '실패 기록 숨기기', '새 세션을 열지 않고 넉다운 기록만 지도에서 치웁니다.');
+        } else if (canControl) {
           html += menuButton('screen', 'primary', '↗', '대화창에서 보기', '터미널 화면을 읽고, 답변/선택지를 웹에서 보냅니다.');
           html += menuButton('focus', '', '⌘', '실제 터미널 앞으로', 'macOS 터미널 창을 직접 확인해야 할 때만 씁니다.');
           html += menuButton('enter', '', '↵', 'Enter만 보내기', '입력 없이 Enter를 보냅니다. 멈춘 프롬프트를 넘길 때 사용합니다.');
@@ -4713,7 +4720,14 @@
         const action = e.target.closest('button[data-action]')?.dataset.action;
         if (action && jobmenuFor) {
           const a = jobmenuFor.a;
-          if (action === 'terminal') {
+          if (action === 'retry') {
+            closeJobMenu();
+            openTerminalSession(
+              { cwd: a.project || '', name: a.name || '세션' },
+              teamOf(a) === 'codex' ? 'codex' : 'claude',
+              a,
+            );
+          } else if (action === 'terminal') {
             closeJobMenu();
             openTerminalSession({ cwd: a.project || '', name: a.name || '세션' }, a.kind === 'codex' ? 'codex' : 'claude');
           } else if (action === 'screen') {
@@ -5011,7 +5025,7 @@
         sm.style.display = 'none';
         if (wasOpen) restoreFocus();
       }
-      async function openTerminalSession(b, command) {
+      async function openTerminalSession(b, command, replacedAgent = null) {
         if (!b.cwd) return toast('폴더를 알 수 없어 시작할 수 없어요');
         toast((command === 'codex' ? 'Codex' : 'Claude') + ' 세션 여는 중...');
         try {
@@ -5021,7 +5035,13 @@
             body: JSON.stringify({ cwd: b.cwd, command, prefer: command }),
           });
           if (!r.ok) throw new Error('HTTP ' + r.status);
-          toast('새 길드원 합류 준비 중!');
+          const result = await r.json().catch(() => ({ ok: true }));
+          if (result.ok === false) throw new Error(result.message || '세션을 열지 못했어요');
+          if (replacedAgent) {
+            stashedIds.add(replacedAgent.id);
+            layout();
+          }
+          toast(replacedAgent ? '새 세션 시작! 기존 넉다운 기록을 정리했어요' : '새 길드원 합류 준비 중!');
           setTimeout(() => layout(), 2500);
         } catch (err) {
           toast('세션 시작 실패: ' + (err && err.message ? err.message : '연결 확인 필요'));
