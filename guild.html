@@ -1085,6 +1085,22 @@
       function toolLabel(a) {
         return teamOf(a) === 'codex' ? 'Codex' : 'Claude';
       }
+      function agentDisplayName(a) {
+        const raw = String(a?.name || '').trim();
+        const looksLikeMarkup = /<\/?[a-z][\s\S]*?>/i.test(raw) || /&(?:lt|gt|nbsp|quot|amp);/i.test(raw);
+        const decoder = document.createElement('textarea');
+        decoder.innerHTML = raw;
+        const cleaned = decoder.value
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const symbols = (cleaned.match(/[<>{}\[\]=;\/]/g) || []).length;
+        const looksLikeCode = !cleaned || symbols > Math.max(3, cleaned.length * 0.18) || /^(tbody|thead|tr|td|div|span)\b/i.test(cleaned);
+        if (looksLikeMarkup || looksLikeCode) {
+          return groupName(a?.project) + ' · ' + toolLabel(a) + ' 세션';
+        }
+        return cleaned;
+      }
 
       // ── 픽셀 스프라이트 (치비 20x22, 큰 얼굴+아웃라인+음영) ────────────────
       // 문자: .투명 O아웃라인 H주색 h주색그늘 F피부 f피부그늘 b볼홍조 E눈 e눈광
@@ -2589,7 +2605,7 @@
           .filter((m) => {
             if (!query) return true;
             const a = m.a;
-            return [a.name, a.project, groupName(a.project), toolLabel(a), stateLabel(a.state)]
+            return [agentDisplayName(a), a.project, groupName(a.project), toolLabel(a), stateLabel(a.state)]
               .filter(Boolean)
               .join(' ')
               .toLocaleLowerCase('ko')
@@ -2635,7 +2651,7 @@
           const a = m.a;
           const color = stateColor(a);
           const tool = toolLabel(a);
-          const name = (a.name || '(무명)').slice(0, 34);
+          const name = agentDisplayName(a).slice(0, 34);
           const project = groupName(a.project);
           const controllable = Number.isFinite(Number(a.pid));
           const itemCls = a.state === 'needs_input' ? ' need' : a.state === 'working' ? ' working' : a.state === 'failed' ? ' failed' : '';
@@ -4617,7 +4633,8 @@
           }
 
           // 이름 + 직업
-          const nm = a.name && a.name.length > 12 ? a.name.slice(0, 11) + '…' : a.name || '(무명)';
+          const displayName = agentDisplayName(a);
+          const nm = displayName.length > 12 ? displayName.slice(0, 11) + '…' : displayName;
           const focused = hover?.m === m || need || failed;
           if (hover?.m === m) {
             pixelText(nm, pos.x, pos.y + 14, 8, dim ? '#8a8594' : '#e8e4f2', 'center');
@@ -4659,7 +4676,7 @@
             done: '완료',
           }[a.state] || a.state;
           tip.innerHTML =
-            '<div class="t-name">' + esc(a.name || '(무명)') + '</div>' +
+            '<div class="t-name">' + esc(agentDisplayName(a)) + '</div>' +
             '<div class="t-job">' + (a.kind === 'codex' ? 'Codex' : 'Claude') + ' · ' + esc(cls.name) + ' · Lv.' + levelOf(a) + '</div>' +
             '<div class="t-role">' + st + (a.project ? ' · ' + esc(groupName(a.project)) : '') + '</div>' +
             (a.lastMessage ? '<div class="t-msg">' + esc(a.lastMessage.slice(0, 64)) + (a.lastMessage.length > 64 ? '...' : '') + '</div>' : '');
@@ -4734,7 +4751,7 @@
           const tool = a.kind === 'codex' ? 'Cdx' : 'Cl';
           const st = need ? '!' : failed ? 'x' : '>';
           pixelText(tool + ' ' + st, x + 40, qy, 8, badgeColor, 'left', true);
-          pixelText((a.name || '(무명)').slice(0, 16), x + 76, qy, 8, '#eee6d8', 'left');
+          pixelText(agentDisplayName(a).slice(0, 16), x + 76, qy, 8, '#eee6d8', 'left');
           qy += 24;
         }
       }
@@ -4781,7 +4798,7 @@
         const state = stateLabel(a.state);
         const tool = toolLabel(a);
         const canControl = Number.isFinite(Number(a.pid));
-        let html = '<div class="jm-head">' + m.no + '. ' + esc((a.name || '(무명)').slice(0, 30)) + '</div>';
+        let html = '<div class="jm-head">' + m.no + '. ' + esc(agentDisplayName(a).slice(0, 30)) + '</div>';
         html += '<div class="jm-status">';
         html += '<b>도구</b><span>' + esc(tool) + ' · ' + esc(cls.name) + '</span>';
         html += '<b>자동 직업</b><span>' + esc(classReason(a)) + '</span>';
@@ -4850,7 +4867,7 @@
         const state = stateLabel(a.state);
         const project = groupName(a.project);
         controlPanelEl.innerHTML =
-          '<div class="cp-head"><span>' + esc((a.name || '(무명)').slice(0, 34)) + '<span class="cp-subhead">' + esc(toolLabel(a)) + ' · ' + esc(state) + ' · ' + esc(project) + ' · ' + esc(cls.name) + '</span></span><button data-cp="close">닫기</button></div>' +
+          '<div class="cp-head"><span>' + esc(agentDisplayName(a).slice(0, 34)) + '<span class="cp-subhead">' + esc(toolLabel(a)) + ' · ' + esc(state) + ' · ' + esc(project) + ' · ' + esc(cls.name) + '</span></span><button data-cp="close">닫기</button></div>' +
           '<div class="cp-section">' +
           '<div class="cp-label">먼저 볼 것</div>' +
           '<div class="cp-help">현재 터미널 화면을 읽고, 필요한 답변을 이 패널에서 바로 보냅니다.</div>' +
@@ -4904,7 +4921,7 @@
         list.forEach((m, i) => {
           const a = m.a;
           const cls = CLASSES[classKeyOf(a)] || CLASSES.mage;
-          html += '<button data-pick="' + i + '"><span class="sw" style="background:' + cls.main + '"></span>' + m.no + '. ' + esc((a.name || '(무명)').slice(0, 18)) + '</button>';
+          html += '<button data-pick="' + i + '"><span class="sw" style="background:' + cls.main + '"></span>' + m.no + '. ' + esc(agentDisplayName(a).slice(0, 18)) + '</button>';
         });
         jm.innerHTML = html;
         jm.style.display = 'block';
@@ -4925,13 +4942,13 @@
           if (action === 'retry') {
             closeJobMenu();
             openTerminalSession(
-              { cwd: a.project || '', name: a.name || '세션' },
+              { cwd: a.project || '', name: agentDisplayName(a) },
               teamOf(a) === 'codex' ? 'codex' : 'claude',
               a,
             );
           } else if (action === 'terminal') {
             closeJobMenu();
-            openTerminalSession({ cwd: a.project || '', name: a.name || '세션' }, a.kind === 'codex' ? 'codex' : 'claude');
+            openTerminalSession({ cwd: a.project || '', name: agentDisplayName(a) }, a.kind === 'codex' ? 'codex' : 'claude');
           } else if (action === 'screen') {
             openControlPanel(a);
             readAgentScreen(a);
@@ -5040,7 +5057,7 @@
           mouse.y = pos.y - scrollY;
           burst(pos.x, pos.y - 38, stateColor(m.a), '여기!');
           openJobMenu(m, Math.max(12, Math.min(window.innerWidth - 24, pos.x + 42)), Math.max(70, pos.y - scrollY - 40));
-          toast((m.a.name || '(무명)').slice(0, 36) + ' 위치를 찾았어요');
+          toast(agentDisplayName(m.a).slice(0, 36) + ' 위치를 찾았어요');
         } else if (action === 'stash') {
           stashedIds.add(m.a.id);
           layout();
@@ -5101,7 +5118,7 @@
       async function killAgent(a) {
         const pid = pidOf(a);
         if (pid == null) return toast('종료할 pid가 없어요');
-        if (!window.confirm('이 세션을 종료할까요?\\n' + (a.name || '(무명)'))) return;
+        if (!window.confirm('이 세션을 종료할까요?\\n' + agentDisplayName(a))) return;
         try {
           const r = await apiPost('/api/kill', { pid });
           if (r.ok) {
