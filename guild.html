@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Claude와 Codex 세션을 한눈에 보고 제어하는 픽셀 아트 길드 타운" />
     <meta name="theme-color" content="#17131f" />
+    <link rel="icon" type="image/png" sizes="128x128" href="assets/favicon.png" />
     <title>길드 타운 — AI 세션 현황</title>
     <style>
       * {
@@ -361,6 +362,7 @@
         width: min(780px, calc(100vw - 340px));
         max-height: none;
         overflow: auto;
+        overscroll-behavior: contain;
         background: #111018;
         border: 1px solid rgba(185, 151, 255, 0.7);
         border-radius: 14px;
@@ -420,6 +422,7 @@
       #controlPanel .cp-summary {
         max-height: 220px;
         overflow: auto;
+        overscroll-behavior: contain;
         margin: 0 0 12px;
         padding: 14px;
         background: #0a0910;
@@ -428,6 +431,82 @@
         color: #f0eaf8;
         font: 13px/1.6 ui-monospace, 'SFMono-Regular', Menlo, monospace;
         white-space: pre-wrap;
+      }
+      #controlPanel .cp-snapshot-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 9px;
+        margin-bottom: 18px;
+      }
+      #controlPanel .cp-overview-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 14px;
+        padding: 13px 14px;
+        border: 1px solid rgba(200, 162, 255, 0.18);
+        border-radius: 10px;
+        background: linear-gradient(135deg, rgba(200, 162, 255, 0.09), rgba(126, 224, 160, 0.045));
+      }
+      #controlPanel .cp-overview-copy {
+        min-width: 0;
+      }
+      #controlPanel .cp-overview-copy b {
+        display: block;
+        margin-bottom: 4px;
+        color: #fff0bd;
+        font-size: 13px;
+      }
+      #controlPanel .cp-overview-copy span {
+        display: block;
+        color: #9f98ad;
+        font-size: 11px;
+        line-height: 1.45;
+      }
+      #controlPanel .cp-quick-actions {
+        display: flex;
+        flex: 0 0 auto;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 7px;
+      }
+      #controlPanel .cp-quick-actions button {
+        padding: 8px 10px;
+        white-space: nowrap;
+      }
+      #controlPanel .cp-snapshot-card {
+        min-width: 0;
+        padding: 12px 13px;
+        border: 1px solid rgba(221, 205, 255, 0.12);
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.035);
+      }
+      #controlPanel .cp-snapshot-card.wide {
+        grid-column: 1 / -1;
+      }
+      #controlPanel .cp-snapshot-card.need {
+        border-color: rgba(255, 207, 90, 0.36);
+        background: rgba(255, 207, 90, 0.08);
+      }
+      #controlPanel .cp-snapshot-card span {
+        display: block;
+        margin-bottom: 5px;
+        color: #827a91;
+        font-size: 9px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      #controlPanel .cp-snapshot-card b {
+        display: block;
+        color: #eee8f5;
+        font-size: 12px;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+      }
+      #controlPanel .cp-snapshot-card.need b {
+        color: #fff0bd;
       }
       #controlPanel .cp-line {
         padding: 4px 0;
@@ -466,6 +545,15 @@
         background: rgba(126, 224, 160, 0.12);
         border-color: rgba(126, 224, 160, 0.35);
       }
+      #controlPanel button:disabled {
+        cursor: not-allowed;
+        opacity: 0.42;
+        filter: saturate(0.45);
+      }
+      #controlPanel button:disabled:hover {
+        background: rgba(255, 255, 255, 0.055);
+        border-color: rgba(221, 205, 255, 0.18);
+      }
       #controlPanel button.primary {
         background: rgba(126, 224, 160, 0.14);
         border-color: rgba(126, 224, 160, 0.38);
@@ -491,6 +579,7 @@
       #controlPanel .cp-terminal {
         max-height: 330px;
         overflow: auto;
+        overscroll-behavior: contain;
         margin: 0;
         padding: 8px 0;
         background: #07050b;
@@ -560,6 +649,273 @@
         padding: 6px 9px;
         font-size: 11px;
       }
+      #controlPanel {
+        width: min(980px, calc(100vw - 340px));
+        overflow: hidden;
+        flex-direction: column;
+      }
+      #controlPanel .cp-head {
+        position: relative;
+        min-height: 70px;
+      }
+      #controlPanel .cp-head-main {
+        min-width: 0;
+      }
+      #controlPanel .cp-head-title {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #controlPanel .cp-head-actions {
+        display: flex;
+        flex: 0 0 auto;
+        gap: 8px;
+      }
+      #controlPanel .cp-live {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #9f98ad;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      #controlPanel .cp-live::before {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #7ee0a0;
+        content: '';
+      }
+      #controlPanel .cp-live.loading::before {
+        background: #ffd479;
+      }
+      #controlPanel .cp-live.error::before {
+        background: #e07a7a;
+      }
+      #controlPanel .cp-pending {
+        display: none;
+        padding: 14px 18px;
+        background: #2a2012;
+        border-bottom: 1px solid rgba(255, 207, 90, 0.28);
+      }
+      #controlPanel .cp-pending.open {
+        display: block;
+      }
+      #controlPanel .cp-pending-label {
+        margin-bottom: 5px;
+        color: #ffcf5a;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      #controlPanel .cp-pending-question {
+        margin-bottom: 10px;
+        color: #fff3d0;
+        font: 13px/1.5 ui-monospace, 'SFMono-Regular', Menlo, monospace;
+        overflow-wrap: anywhere;
+      }
+      #controlPanel .cp-pending-command {
+        max-height: 92px;
+        overflow: auto;
+        margin: 0 0 11px;
+        padding: 9px 11px;
+        border: 1px solid rgba(221, 205, 255, 0.12);
+        border-radius: 7px;
+        background: #0b0910;
+        color: #bdb4c9;
+        font: 10px/1.5 ui-monospace, 'SFMono-Regular', Menlo, monospace;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+      #controlPanel .cp-pending-command span {
+        display: block;
+        margin-bottom: 3px;
+        color: #8f879f;
+        font: 800 9px Inter, ui-sans-serif, system-ui, sans-serif;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      #controlPanel .cp-workspace {
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr);
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+      #controlPanel .cp-context {
+        min-height: 0;
+        overflow: auto;
+        padding: 16px;
+        background: #0d0c13;
+        border-right: 1px solid rgba(221, 205, 255, 0.1);
+      }
+      #controlPanel .cp-context-row {
+        margin-bottom: 14px;
+      }
+      #controlPanel .cp-context-row span {
+        display: block;
+        margin-bottom: 4px;
+        color: #746d82;
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+      #controlPanel .cp-context-row b {
+        display: block;
+        color: #ded7e9;
+        font-size: 12px;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+      }
+      #controlPanel .cp-context-row small {
+        display: block;
+        margin-top: 5px;
+        color: #81798e;
+        font-size: 10px;
+        line-height: 1.45;
+      }
+      #controlPanel .cp-context-actions {
+        display: grid;
+        gap: 8px;
+        margin-top: 18px;
+      }
+      #controlPanel .cp-context-actions button {
+        width: 100%;
+      }
+      #controlPanel .cp-main {
+        display: flex;
+        min-width: 0;
+        min-height: 0;
+        flex-direction: column;
+      }
+      #controlPanel .cp-tabs {
+        display: flex;
+        flex: 0 0 auto;
+        gap: 4px;
+        padding: 10px 14px 0;
+        border-bottom: 1px solid rgba(221, 205, 255, 0.1);
+      }
+      #controlPanel .cp-tabs button {
+        border: 0;
+        border-bottom: 2px solid transparent;
+        border-radius: 6px 6px 0 0;
+        background: transparent;
+        color: #8f879f;
+      }
+      #controlPanel .cp-tabs button.active {
+        border-bottom-color: #ffd479;
+        color: #ffd479;
+      }
+      #controlPanel .cp-view {
+        display: none;
+        min-height: 0;
+        flex: 1 1 auto;
+        overflow: auto;
+        padding: 16px 18px;
+        overscroll-behavior: contain;
+      }
+      #controlPanel .cp-view.active {
+        display: block;
+      }
+      #controlPanel .cp-summary,
+      #controlPanel .cp-terminal {
+        max-height: none;
+        margin: 0;
+      }
+      #controlPanel .cp-terminal {
+        min-height: 100%;
+      }
+      #controlPanel .cp-composer {
+        display: flex;
+        min-height: 100%;
+        flex-direction: column;
+      }
+      #controlPanel .cp-composer textarea {
+        min-height: 150px;
+        flex: 1 1 auto;
+      }
+      #controlPanel .cp-send-note {
+        margin: 8px 0 0;
+        color: #9f98ad;
+        font-size: 11px;
+        line-height: 1.5;
+      }
+      #controlPanel .cp-send-status {
+        min-height: 18px;
+        margin-top: 8px;
+        color: #8fd9ad;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      #controlPanel .cp-response-context {
+        margin-bottom: 16px;
+        padding: 13px 14px;
+        background: #191521;
+        border: 1px solid rgba(255, 207, 90, 0.22);
+        border-radius: 8px;
+      }
+      #controlPanel .cp-response-context.empty {
+        border-color: rgba(221, 205, 255, 0.12);
+      }
+      #controlPanel .cp-response-context span {
+        display: block;
+        margin-bottom: 5px;
+        color: #ffcf5a;
+        font-size: 10px;
+        font-weight: 800;
+      }
+      #controlPanel .cp-response-context.empty span {
+        color: #8f879f;
+      }
+      #controlPanel .cp-response-context b {
+        display: block;
+        color: #fff3d0;
+        font: 12px/1.55 ui-monospace, 'SFMono-Regular', Menlo, monospace;
+        overflow-wrap: anywhere;
+      }
+      #controlPanel .cp-response-context.empty b {
+        color: #9f98ad;
+      }
+      #controlPanel .cp-choice-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      #controlPanel .cp-choice-check {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        text-align: left;
+      }
+      #controlPanel .cp-choice-check .cp-checkmark {
+        display: inline-grid;
+        width: 18px;
+        height: 18px;
+        flex: 0 0 18px;
+        place-items: center;
+        border: 1px solid rgba(255, 207, 90, 0.55);
+        border-radius: 4px;
+        color: transparent;
+        background: rgba(0, 0, 0, 0.18);
+      }
+      #controlPanel .cp-choice-check.checked {
+        border-color: rgba(126, 224, 160, 0.72);
+        background: rgba(126, 224, 160, 0.15);
+        color: #e5ffed;
+      }
+      #controlPanel .cp-choice-check.checked .cp-checkmark {
+        border-color: #7ee0a0;
+        background: #2e8150;
+        color: #fff;
+      }
+      #controlPanel .cp-multi-submit {
+        border-color: rgba(126, 224, 160, 0.55);
+      }
+      #controlPanel button.danger {
+        border-color: rgba(224, 122, 122, 0.3);
+        color: #ffb4b4;
+      }
       @media (max-width: 1020px) {
         #controlPanel {
           left: 14px;
@@ -575,6 +931,7 @@
         width: 300px;
         z-index: 12;
         overflow: auto;
+        overscroll-behavior: contain;
         padding: 12px;
         background: rgba(13, 10, 20, 0.9);
         border: 1px solid rgba(221, 205, 255, 0.18);
@@ -672,6 +1029,9 @@
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 9px;
       }
+      #sessionPanel .sp-item[data-id] {
+        cursor: pointer;
+      }
       #sessionPanel .sp-item.need {
         background: rgba(255, 116, 64, 0.13);
         border-color: rgba(255, 160, 72, 0.68);
@@ -707,6 +1067,29 @@
         font-size: 12px;
         line-height: 1.3;
         font-weight: 800;
+      }
+      #sessionPanel .sp-field {
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid rgba(255,255,255,0.07);
+      }
+      #sessionPanel .sp-field span {
+        display: block;
+        margin-bottom: 2px;
+        color: #8f879f;
+        font-size: 9px;
+        font-weight: 800;
+      }
+      #sessionPanel .sp-field b {
+        display: block;
+        color: #eee8f5;
+        font-size: 11px;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+      }
+      #sessionPanel .sp-field.response b {
+        color: #bcd9ca;
+        font-weight: 600;
       }
       #sessionPanel .sp-meta {
         color: #aaa2ba;
@@ -812,6 +1195,86 @@
         color: #f3eff8;
         cursor: pointer;
       }
+      #responseConfirm {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: none;
+        place-items: center;
+        padding: 20px;
+        background: rgba(7, 5, 11, 0.78);
+        backdrop-filter: blur(8px);
+      }
+      #responseConfirm.open {
+        display: grid;
+      }
+      #responseConfirm .rc-card {
+        width: min(460px, 100%);
+        padding: 22px;
+        border: 1px solid rgba(255, 207, 90, 0.5);
+        border-radius: 16px;
+        background: linear-gradient(180deg, #1c1725 0%, #121019 100%);
+        color: #f4eff8;
+        box-shadow: 0 26px 80px rgba(0, 0, 0, 0.76), 0 0 32px rgba(255, 195, 74, 0.08);
+      }
+      #responseConfirm .rc-kicker {
+        margin-bottom: 7px;
+        color: #ffcf5a;
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      #responseConfirm h2 {
+        margin: 0;
+        color: #fff5d8;
+        font-size: 19px;
+      }
+      #responseConfirm .rc-preview {
+        max-height: 180px;
+        overflow: auto;
+        margin: 16px 0 12px;
+        padding: 14px;
+        border: 1px solid rgba(221, 205, 255, 0.14);
+        border-radius: 10px;
+        background: #0c0a11;
+        color: #e9e2f1;
+        font: 13px/1.55 ui-monospace, 'SFMono-Regular', Menlo, monospace;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+      #responseConfirm .rc-note {
+        margin: 0;
+        color: #a9a1b8;
+        font-size: 12px;
+        line-height: 1.55;
+      }
+      #responseConfirm .rc-actions {
+        display: grid;
+        grid-template-columns: 1fr 1.35fr;
+        gap: 9px;
+        margin-top: 18px;
+      }
+      #responseConfirm button {
+        min-height: 42px;
+        border: 1px solid rgba(221, 205, 255, 0.2);
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.06);
+        color: #eee9f4;
+        font: 800 12px Inter, ui-sans-serif, system-ui, sans-serif;
+        cursor: pointer;
+      }
+      #responseConfirm button:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      #responseConfirm button.primary {
+        border-color: rgba(255, 207, 90, 0.52);
+        background: rgba(255, 207, 90, 0.15);
+        color: #fff1c1;
+      }
+      #responseConfirm button.primary:hover {
+        background: rgba(255, 207, 90, 0.23);
+      }
       @media (max-width: 899px) {
         #sessionPanel {
           top: 62px;
@@ -838,6 +1301,51 @@
         }
         #controlPanel .cp-head {
           font-size: 14px;
+        }
+        #controlPanel .cp-workspace {
+          grid-template-columns: 1fr;
+        }
+        #controlPanel .cp-context {
+          display: grid;
+          max-height: 150px;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px 14px;
+          border-right: 0;
+          border-bottom: 1px solid rgba(221, 205, 255, 0.1);
+        }
+        #controlPanel .cp-context-row {
+          min-width: 0;
+          margin: 0;
+        }
+        #controlPanel .cp-context-actions {
+          display: flex;
+          grid-column: 1 / -1;
+          margin-top: 4px;
+        }
+        #controlPanel .cp-head-actions .cp-live {
+          display: none;
+        }
+        #controlPanel .cp-tabs {
+          overflow-x: auto;
+        }
+        #controlPanel .cp-choice-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        #controlPanel .cp-snapshot-grid {
+          grid-template-columns: 1fr;
+        }
+        #controlPanel .cp-snapshot-card.wide {
+          grid-column: auto;
+        }
+        #controlPanel .cp-overview-head {
+          flex-direction: column;
+        }
+        #controlPanel .cp-quick-actions {
+          width: 100%;
+          justify-content: stretch;
+        }
+        #controlPanel .cp-quick-actions button {
+          flex: 1 1 130px;
         }
         #jobmenu,
         #sessionmenu {
@@ -896,6 +1404,18 @@
         <p>주황색은 응답 필요, 파란색은 작업 중, 빨간색은 실패 상태입니다. 세션 종료는 확인 후에만 실행됩니다.</p>
       </div>
     </div>
+    <div id="responseConfirm" role="dialog" aria-modal="true" aria-labelledby="responseConfirmTitle" aria-describedby="responseConfirmNote">
+      <div class="rc-card">
+        <div class="rc-kicker">Terminal response</div>
+        <h2 id="responseConfirmTitle">터미널로 보낼까요?</h2>
+        <div id="responseConfirmPreview" class="rc-preview"></div>
+        <p id="responseConfirmNote" class="rc-note">전송한 뒤에는 이 응답을 취소하거나 수정할 수 없습니다.</p>
+        <div class="rc-actions">
+          <button type="button" data-response-confirm="cancel">취소</button>
+          <button id="responseConfirmSubmit" class="primary" type="button" data-response-confirm="submit">응답 보내기</button>
+        </div>
+      </div>
+    </div>
     <div id="hud">
       <div class="hud-row"><span>🏰 <b>길드 타운</b> <span class="hud-detail">· <span id="count">0</span>명 · 연결 </span><span id="conn" class="connecting">연결 중…</span></span><span><button id="sessionToggle" type="button" aria-controls="sessionPanel" aria-expanded="false">세션 보기</button> <button id="reconnectButton" type="button">재연결</button> <button id="helpButton" type="button" aria-haspopup="dialog">도움말</button> <a class="hud-detail" href="/">대시보드</a></span></div>
     </div>
@@ -917,6 +1437,10 @@
       const helpPanelEl = document.getElementById('helpPanel');
       const helpButtonEl = document.getElementById('helpButton');
       const helpCloseEl = document.getElementById('helpClose');
+      const responseConfirmEl = document.getElementById('responseConfirm');
+      const responseConfirmTitleEl = document.getElementById('responseConfirmTitle');
+      const responseConfirmPreviewEl = document.getElementById('responseConfirmPreview');
+      const responseConfirmSubmitEl = document.getElementById('responseConfirmSubmit');
       let agents = [];
       let eventSource = null;
       let sessionPanelVisible = window.innerWidth >= 900;
@@ -925,6 +1449,10 @@
       const terminalControl = new Map();
       const terminalNeedsInput = new Map();
       const terminalProbeInFlight = new Set();
+      const terminalProbeAt = new Map();
+      const terminalScreenCache = new Map();
+      let terminalProbeTimer = null;
+      let lastAgentRenderSignature = '';
       const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       const DEMO = [
@@ -950,6 +1478,30 @@
         candidateNavEl.innerHTML = html;
       }
 
+      function agentRenderSignature(list) {
+        return list
+          .map((a) => {
+            const context = Number(a?.tokens?.context) || 0;
+            const contextWindow = Number(a?.tokens?.window) || 0;
+            return [
+              a?.id,
+              a?.pid,
+              a?.name,
+              a?.state,
+              a?.kind,
+              a?.project,
+              String(a?.lastMessage || '').slice(0, 140),
+              a?.aiHandoff,
+              a?.branch,
+              a?.pr,
+              context,
+              contextWindow,
+              Array.isArray(a?.subagents) ? a.subagents.length : 0,
+            ].join('\u001f');
+          })
+          .join('\u001e');
+      }
+
       function connectSSE() {
         if (eventSource) eventSource.close();
         connEl.textContent = '연결 중…';
@@ -965,10 +1517,16 @@
             try {
               const list = JSON.parse(e.data);
               if (Array.isArray(list)) {
+                const nextSignature = agentRenderSignature(list);
                 agents = list;
                 connEl.textContent = '온라인';
                 connEl.className = '';
-                layout();
+                if (nextSignature !== lastAgentRenderSignature) {
+                  lastAgentRenderSignature = nextSignature;
+                  layout();
+                } else if (controlPanelFor) {
+                  updateControlPanelState(controlPanelFor);
+                }
                 probeTerminalControl(list);
               }
             } catch {}
@@ -990,34 +1548,83 @@
           agents = DEMO_MODE ? DEMO : [];
           layout();
         }
+        clearInterval(terminalProbeTimer);
+        terminalProbeTimer = setInterval(() => {
+          if (document.visibilityState === 'visible' && agents.length) probeTerminalControl(agents);
+        }, 4000);
       }
 
-      function probeTerminalControl(list) {
+      function screenNeedsResponse(screen) {
+        const lines = String(screen || '')
+          .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .slice(-48);
+        if (!lines.length) return false;
+        const tail = lines.slice(-36);
+        const ignoredUi = /(?:tab to queue message|context left|new task\?|\/clear|disable recaps|※ recap:|accept edits on|explain this codebase|jump to bottom)/i;
+        const strongPrompt = /(?:\[y\/n\]|\[Y\/n\]|\(y\/n\)|press enter to confirm|enter to select|would you like to (?:run|allow|approve|continue)|do you want to (?:run|allow|approve|continue)|허용하시겠습니까|승인하시겠습니까|계속하시겠습니까|실행할까요|선택하세요)/i;
+        const menuOptions = tail.filter((line) => /^[❯›>]?\s*[1-9][.)]\s+/.test(line));
+        // 긴 scrollback 속 과거 질문은 제외하고, 현재 화면 하단의 명시적 승인/선택 UI만 감지한다.
+        return menuOptions.length >= 2 || tail.some((line) => !ignoredUi.test(line) && strongPrompt.test(line));
+      }
+
+      function probeTerminalControl(list, force = false) {
         if (DEMO_MODE) return;
-        for (const a of list) {
+        const now = Date.now();
+        const targets = list
+          .filter((a) => {
+            const pid = Number(a?.pid);
+            const urgent = a?.state === 'needs_input';
+            const panelOpen = controlPanelFor?.id === a?.id;
+            const minInterval = urgent ? 4000 : a?.state === 'working' ? 8000 : 15000;
+            return Number.isFinite(pid) && !terminalProbeInFlight.has(pid) && (force || (!panelOpen && now - (terminalProbeAt.get(pid) || 0) >= minInterval));
+          })
+          .sort((a, b) => {
+            const priority = (agent) =>
+              agent?.state === 'needs_input' ? 0 : controlPanelFor?.id === agent?.id ? 1 : agent?.state === 'working' ? 2 : 3;
+            return priority(a) - priority(b) || (terminalProbeAt.get(Number(a.pid)) || 0) - (terminalProbeAt.get(Number(b.pid)) || 0);
+          })
+          // 열린 패널은 전용 갱신 루프가 담당하고, 나머지는 적은 묶음으로 순환 확인한다.
+          .slice(0, 6);
+        let remaining = targets.length;
+        let needsRelayout = false;
+        let needsPanelRefresh = false;
+        for (const a of targets) {
           const pid = Number(a?.pid);
-          if (!Number.isFinite(pid) || terminalProbeInFlight.has(pid)) continue;
           terminalProbeInFlight.add(pid);
+          terminalProbeAt.set(pid, now);
           terminalControl.set(pid, 'checking');
           fetch(API + '/api/screen/' + encodeURIComponent(pid))
             .then((r) => r.json())
             .then((data) => {
               terminalControl.set(pid, data?.ok === true);
-              // 화면 전체의 과거 대화가 아니라 터미널 맨 아래의 실제 대화형 프롬프트만 본다.
-              // 일반 설명에 permission/선택 같은 단어가 포함된 경우를 응답 요청으로 오인하지 않는다.
-              const tail = String(data?.screen || '').slice(-700);
-              const interactivePrompt = /(?:\[y\/n\]|\[Y\/n\]|\(y\/n\)|press enter to confirm|enter to select|would you like to (?:run|allow|approve|continue)|do you want to (?:run|allow|approve|continue)|허용하시겠습니까|승인하시겠습니까|계속하시겠습니까|실행할까요)\s*[?？:]?/i;
-              terminalNeedsInput.set(pid, interactivePrompt.test(tail));
+              if (data?.ok === true) {
+                const raw = data?.screen || data?.text || '';
+                const wasNeeded = needsResponse(a);
+                terminalNeedsInput.set(pid, screenNeedsResponse(raw));
+                if (wasNeeded !== needsResponse(a)) needsRelayout = true;
+                const previousVia = terminalScreenCache.get(pid)?.via || '';
+                const nextVia = data?.via || '';
+                terminalScreenCache.set(pid, { text: raw, at: Date.now(), via: nextVia });
+                if (previousVia !== nextVia) needsPanelRefresh = true;
+              }
             })
             .catch(() => terminalControl.set(pid, false))
             .finally(() => {
               terminalProbeInFlight.delete(pid);
-              layout();
+              remaining--;
+              if (remaining === 0) {
+                if (needsRelayout) layout();
+                else if (needsPanelRefresh) renderSessionPanel();
+              }
             });
         }
       }
 
       function needsResponse(a) {
+        // SSE가 이미 응답 대기로 판정했다면 화면 스냅샷의 일시적인 오탐으로 덮어쓰지 않는다.
         if (a?.state === 'needs_input') return true;
         const pid = Number(a?.pid);
         return Number.isFinite(pid) && terminalNeedsInput.get(pid) === true;
@@ -1054,7 +1661,7 @@
       }
 
       // ── 직업 정의 (베이스 스프라이트 + 색 + 무기 + 오라) ──────────────────
-      // base: 'mage'(Claude 계열) / 'warrior'(Codex 계열)
+      // 도구(Claude/Codex)는 팀만 나타내며 직업은 길드 전체에서 고르게 배정한다.
       const CLASSES = {
         apprentice_mage: { name: '견습 마법사', base: 'mage', main: '#6f568e', robe: '#493b63', weapon: 'staff', line: 'claude' },
         mage: { name: '마법사', base: 'mage', main: '#7553a8', robe: '#4b356f', weapon: 'staff', line: 'claude' },
@@ -1066,13 +1673,20 @@
         knight: { name: '기사', base: 'warrior', main: '#d1d9e0', robe: '#4f6f9a', weapon: 'sword', aura: '#cfe0ff', line: 'codex' },
         smith: { name: '대장장이', base: 'warrior', main: '#9b6847', robe: '#6d4937', weapon: 'hammer', line: 'codex' },
         berserker: { name: '광전사', base: 'warrior', main: '#69676c', robe: '#74383a', weapon: 'axe', aura: '#ff9a7a', line: 'codex' },
+        archer: { name: '궁수', base: 'ranged', main: '#557a3f', robe: '#694432', weapon: 'bow', aura: '#b8e27a', line: 'any' },
+        rogue: { name: '도적', base: 'stealth', main: '#34333f', robe: '#2c5755', weapon: 'dagger', aura: '#ad8cd8', line: 'any' },
         courier: { name: '전령', base: 'mage', main: '#4f7254', robe: '#3f5d47', weapon: 'scroll', line: 'any' },
       };
+      const BALANCED_JOB_POOL = [
+        'mage', 'warrior', 'archer', 'rogue', 'summoner', 'knight',
+        'sage', 'berserker', 'archmage', 'recruit', 'apprentice_mage',
+      ];
       const DISPLAY_JOB_POOLS = {
-        claude: ['apprentice_mage', 'mage', 'summoner', 'sage', 'archmage'],
-        codex: ['recruit', 'warrior', 'knight', 'smith', 'berserker'],
+        claude: ['mage', 'archer', 'rogue', 'summoner', 'sage', 'knight'],
+        codex: ['warrior', 'archer', 'rogue', 'mage', 'knight', 'summoner'],
       };
       const displayClassById = new Map();
+      const agentNameCache = new Map();
 
       function autoClass(a) {
         if (a.aiHandoff && /READY|RUNNING/.test(a.aiHandoff)) return 'courier';
@@ -1080,7 +1694,7 @@
         const subs = (a.subagents || []).length;
         if (a.kind === 'codex') {
           if (subs >= 1) return 'knight';
-          if (a.pr || a.branch) return 'smith';
+          if (a.pr || a.branch) return 'knight';
           if (ctx > 150000) return 'berserker';
           if (ctx > 40000) return 'warrior';
           return 'recruit';
@@ -1097,34 +1711,25 @@
       }
       function assignDistinctDisplayClasses(list) {
         displayClassById.clear();
-        for (const team of ['claude', 'codex']) {
-          const pool = DISPLAY_JOB_POOLS[team];
-          const used = new Set();
-          for (const a of list.filter((x) => teamOf(x) === team)) {
-            const preferred = autoClass(a);
-            if (preferred === 'courier') {
-              displayClassById.set(a.id, preferred);
-              continue;
-            }
-            const at = Math.max(0, pool.indexOf(preferred));
-            const candidates = [preferred];
-            for (let distance = 1; distance < pool.length; distance++) {
-              if (at - distance >= 0) candidates.push(pool[at - distance]);
-              if (at + distance < pool.length) candidates.push(pool[at + distance]);
-            }
-            const chosen = candidates.find((key) => !used.has(key)) || preferred;
-            used.add(chosen);
-            displayClassById.set(a.id, chosen);
-          }
-        }
+        const regular = list
+          .filter((a) => autoClass(a) !== 'courier')
+          .slice()
+          .sort((a, b) => hashOf(a.id || a.name || '') - hashOf(b.id || b.name || '') || String(a.id).localeCompare(String(b.id)));
+        regular.forEach((a, index) => displayClassById.set(a.id, BALANCED_JOB_POOL[index % BALANCED_JOB_POOL.length]));
+        for (const a of list) if (autoClass(a) === 'courier') displayClassById.set(a.id, 'courier');
       }
       function classReason(a) {
+        const preferred = autoClass(a);
+        const assigned = displayClassById.get(a.id);
+        if (assigned && assigned !== preferred) {
+          return 'Claude/Codex 구분 없이 길드 직업 균형 배정 · 기본 판정 ' + (CLASSES[preferred]?.name || preferred);
+        }
         const ctx = (a.tokens && a.tokens.context) || 0;
         const subs = (a.subagents || []).length;
         if (a.aiHandoff && /READY|RUNNING/.test(a.aiHandoff)) return '핸드오프 중이라 전령';
         if (a.kind === 'codex') {
           if (subs >= 1) return '서브에이전트 지휘 중이라 기사';
-          if (a.pr || a.branch) return '브랜치/PR 작업이라 대장장이';
+          if (a.pr || a.branch) return '브랜치/PR 작업을 수호하는 기사';
           if (ctx > 150000) return '마나 15만+라 광전사';
           if (ctx > 40000) return '마나 4만+라 전사';
           return '기본 Codex 견습병';
@@ -1143,8 +1748,12 @@
       function stateLabel(state) {
         return { working: '작업중', needs_input: '응답 필요', idle: '대기', failed: '실패/종료', done: '완료', unknown: '대기' }[state] || state || '알수없음';
       }
+      function effectiveState(a) {
+        if (needsResponse(a)) return 'needs_input';
+        return a?.state === 'needs_input' ? 'idle' : a?.state;
+      }
       function stateColor(a) {
-        if (a.state === 'needs_input') return '#ffcf5a';
+        if (needsResponse(a)) return '#ffcf5a';
         if (a.state === 'failed') return '#e07a7a';
         return teamOf(a) === 'codex' ? '#8fd0ff' : '#c8a2ff';
       }
@@ -1154,8 +1763,15 @@
       function toolLabel(a) {
         return teamOf(a) === 'codex' ? 'Codex' : 'Claude';
       }
+      function terminalAppLabel(a) {
+        const pid = Number(a?.pid);
+        const via = Number.isFinite(pid) ? terminalScreenCache.get(pid)?.via : '';
+        return via || (Number.isFinite(pid) ? '연결된 터미널' : '터미널 정보 없음');
+      }
       function agentDisplayName(a) {
         const raw = String(a?.name || '').trim();
+        const cacheKey = raw + '\u001f' + String(a?.project || '') + '\u001f' + String(a?.kind || '');
+        if (agentNameCache.has(cacheKey)) return agentNameCache.get(cacheKey);
         const looksLikeMarkup = /<\/?[a-z][\s\S]*?>/i.test(raw) || /&(?:lt|gt|nbsp|quot|amp);/i.test(raw);
         const decoder = document.createElement('textarea');
         decoder.innerHTML = raw;
@@ -1165,10 +1781,50 @@
           .trim();
         const symbols = (cleaned.match(/[<>{}\[\]=;\/]/g) || []).length;
         const looksLikeCode = !cleaned || symbols > Math.max(3, cleaned.length * 0.18) || /^(tbody|thead|tr|td|div|span)\b/i.test(cleaned);
-        if (looksLikeMarkup || looksLikeCode) {
-          return groupName(a?.project) + ' · ' + toolLabel(a) + ' 세션';
-        }
-        return cleaned;
+        const result = looksLikeMarkup || looksLikeCode
+          ? groupName(a?.project) + ' · ' + toolLabel(a) + ' 세션'
+          : cleaned;
+        if (agentNameCache.size > 200) agentNameCache.clear();
+        agentNameCache.set(cacheKey, result);
+        return result;
+      }
+      function projectShortLabel(a) {
+        const parts = String(a?.project || '')
+          .split('/')
+          .filter(Boolean);
+        if (!parts.length) return '프로젝트 미지정';
+        const last = parts.at(-1);
+        const genericLeaf = /^(?:m|www|web|app|src|vuebuild|frontend|backend)$/i.test(last);
+        return genericLeaf && parts.length > 1 ? parts.slice(-2).join('/') : last;
+      }
+      function sessionTaskSummary(a) {
+        const request = agentDisplayName(a);
+        const haystack = (request + ' ' + String(a?.lastMessage || '')).toLocaleLowerCase('ko');
+        const rules = [
+          [/(?:collector|scrap|crawl|페이지 정보|데이터 수집|array\(\d+\).*(?:\.js|\.ts))/, '페이지 데이터 수집'],
+          [/(?:git\s+pull|pull 받아|코드들 pull|저장소.*최신)/, '코드 업데이트'],
+          [/(?:서버 실행|서버.*켜|localhost|로컬호스트|포트 접속)/, '서버 실행·점검'],
+          [/(?:회원가입|join|인증번호|본인인증)/, '회원가입·인증'],
+          [/(?:추천인|친구 초대|invite)/, '추천인·친구 초대'],
+          [/(?:댓글|comment)/, '댓글 기능'],
+          [/(?:리뷰|review)/, '코드 리뷰'],
+          [/(?:정리|미사용 코드|cleanup)/, '코드·세션 정리'],
+          [/(?:디자인|ui|화면|레이아웃)/, '화면 개선'],
+        ];
+        for (const [pattern, label] of rules) if (pattern.test(haystack)) return label;
+        const noisy = /^\s*\d+[.)]\s*(?:array\(|object\b|error\b|undefined\b|null\b)/i.test(request) || /\.(?:js|ts|css)\?\d{6,}:\d+/.test(request);
+        if (noisy || !request) return toolLabel(a) + ' 작업';
+        return request.length > 24 ? request.slice(0, 23) + '…' : request;
+      }
+      function sessionBaseTitle(a) {
+        return projectShortLabel(a) + ' · ' + sessionTaskSummary(a);
+      }
+      function sessionDisplayTitle(a) {
+        const pid = Number(a?.pid);
+        const identity = Number.isFinite(pid)
+          ? toolLabel(a) + ' #' + pid
+          : toolLabel(a) + ' 기록 ' + String(a?.id || '').slice(0, 4);
+        return projectShortLabel(a) + ' · ' + identity + ' · ' + sessionTaskSummary(a);
       }
 
       // ── 픽셀 스프라이트 (치비 20x22, 큰 얼굴+아웃라인+음영) ────────────────
@@ -1344,14 +2000,38 @@
         M: '#5d5f6d', m: '#3f414c', C: '#8b6a4c', A: '#f0b35a', F: '#ff784a',
         T: '#5c5aa6', t: '#36366f', Y: '#d7b44a', K: '#513725', B: '#6a4d3b',
       };
+      const BUILDING_NPCS = {
+        tower: { key: 'archmage', name: '탑지기', src: 'assets/tower-keeper.png', effect: 'star' },
+        smithy: { key: 'smith', name: '대장장이', working: true },
+        shop: { key: 'recruit', name: '무기상', src: 'assets/weapon-merchant.png', effect: 'shine' },
+      };
+      for (const npc of Object.values(BUILDING_NPCS)) {
+        if (!npc.src) continue;
+        npc.image = new Image();
+        npc.ready = false;
+        npc.image.onload = () => (npc.ready = true);
+        npc.image.src = npc.src;
+      }
       const JOB_ATLAS_CELL = 362;
       const JOB_RENDER_SIZE = 88;
       const JOB_MINI_SIZE = 70;
+      const JOB_RENDER_HALF_WIDTH = JOB_RENDER_SIZE / 2 + 4;
       const JOB_ATLAS_INDEX = {
         apprentice_mage: 0, mage: 1, archmage: 2, summoner: 3,
         sage: 4, recruit: 5, warrior: 6, knight: 7,
         smith: 8, berserker: 9, courier: 10,
       };
+      // 각 생성 이미지의 실제 알파 경계. 고정 셀 crop은 인접 행의 머리를 자르거나 섞는다.
+      const JOB_IDLE_BOUNDS = [
+        [100, 63, 217, 270], [422, 46, 260, 290], [789, 39, 297, 293], [1086, 74, 235, 251],
+        [67, 380, 249, 282], [421, 388, 212, 248], [748, 374, 255, 265], [1096, 363, 223, 280],
+        [101, 680, 243, 279], [416, 693, 296, 260], [759, 693, 246, 272],
+      ];
+      const JOB_ACTION_BOUNDS = [
+        [48, 79, 266, 259], [386, 85, 314, 253], [771, 29, 267, 309], [1119, 91, 296, 247],
+        [24, 453, 314, 247], [422, 464, 242, 236], [749, 440, 311, 260], [1110, 482, 314, 218],
+        [59, 763, 244, 299], [386, 816, 314, 246], [748, 831, 314, 231],
+      ];
       const jobAtlas = new Image();
       let jobAtlasReady = false;
       jobAtlas.onload = () => (jobAtlasReady = true);
@@ -1362,40 +2042,79 @@
       jobActionAtlas.onload = () => (jobActionAtlasReady = true);
       jobActionAtlas.onerror = () => console.warn('직업 공격 프레임을 불러오지 못해 대기 모션만 사용합니다.');
       jobActionAtlas.src = 'assets/guild-jobs-action.png';
+      const CUSTOM_JOB_SPRITES = {
+        archer: { src: 'assets/guild-archer.png', image: new Image(), ready: false, bounds: [60, 56, 194, 194] },
+        rogue: { src: 'assets/guild-rogue.png', image: new Image(), ready: false, bounds: [75, 63, 162, 178] },
+      };
+      for (const sprite of Object.values(CUSTOM_JOB_SPRITES)) {
+        sprite.image.onload = () => (sprite.ready = true);
+        sprite.image.onerror = () => console.warn('추가 직업 스프라이트를 불러오지 못했습니다: ' + sprite.src);
+        sprite.image.src = sprite.src;
+      }
 
       function isJobAttackFrame(key, working, t) {
-        if (!working || !jobActionAtlasReady) return false;
+        if (!working) return false;
         const cycle = (t + hashOf(key) * 13) % 1450;
+        if (CUSTOM_JOB_SPRITES[key]?.ready) return cycle >= 360 && cycle < 820;
+        if (!jobActionAtlasReady) return false;
         return cycle >= 360 && cycle < 820;
       }
 
-      function drawJobSprite(x, feetY, key, dim, working, t, size = JOB_RENDER_SIZE) {
+      function drawJobSprite(x, feetY, key, dim, working, t, size = JOB_RENDER_SIZE, facing = 'left') {
+        // 원본 스프라이트는 왼쪽을 향한다. 오른쪽을 볼 때만 좌우 반전한다.
+        const direction = facing === 'right' ? -1 : 1;
+        const custom = CUSTOM_JOB_SPRITES[key];
+        if (custom?.ready) {
+          const cycle = (t + hashOf(key) * 13) % 1450;
+          const attacking = isJobAttackFrame(key, working, t);
+          const breath = Math.sin(t / 520 + hashOf(key) * 0.01);
+          const progress = attacking ? (cycle - 360) / 460 : 0;
+          const actionWave = attacking ? Math.sin(progress * Math.PI) : 0;
+          const motionX = key === 'rogue'
+            ? (facing === 'right' ? 1 : -1) * actionWave * 5
+            : (facing === 'right' ? -1 : 1) * actionWave * 2;
+          g.save();
+          g.globalAlpha = dim ? 0.62 : 1;
+          g.translate(x + motionX, feetY + breath * 0.8 - actionWave * 1.5);
+          g.rotate(key === 'archer' ? -actionWave * 0.035 : actionWave * 0.02);
+          g.scale(direction * (1 - breath * 0.0025), 1 + breath * 0.0025);
+          const [bx, by, bw, bh] = custom.bounds;
+          const destH = size * 0.8;
+          const destW = destH * (bw / bh);
+          g.drawImage(custom.image, bx, by, bw, bh, -destW / 2, -destH, destW, destH);
+          g.restore();
+          return true;
+        }
         if (!jobAtlasReady || JOB_ATLAS_INDEX[key] == null) return false;
         const index = JOB_ATLAS_INDEX[key];
         const col = index % 4;
-        const row = Math.floor(index / 4);
         const cycle = (t + hashOf(key) * 13) % 1450;
         const attacking = isJobAttackFrame(key, working, t);
+        const bounds = (attacking ? JOB_ACTION_BOUNDS : JOB_IDLE_BOUNDS)[index];
+        if (!bounds) return false;
         const breath = Math.sin(t / 520 + hashOf(key) * 0.01);
         const bob = breath * 0.8;
         const anticipation = working && cycle < 360 ? cycle / 360 : 0;
         const recoil = working && cycle >= 820 && cycle < 1080 ? 1 - (cycle - 820) / 260 : 0;
         const action = attacking ? 1 : anticipation * -0.35 + recoil * 0.25;
         const lift = attacking && (key === 'courier' || key === 'berserker') ? 1.4 : 0;
+        const artScale = size / JOB_ATLAS_CELL;
+        const destX = (bounds[0] - col * JOB_ATLAS_CELL - JOB_ATLAS_CELL / 2) * artScale;
+        const destY = -bounds[3] * artScale;
         g.save();
         g.globalAlpha = dim ? 0.62 : 1;
         g.translate(x + action * 1.3, feetY + bob - lift);
-        g.scale(1 - breath * 0.0025, 1 + breath * 0.0025);
+        g.scale(direction * (1 - breath * 0.0025), 1 + breath * 0.0025);
         g.drawImage(
           attacking ? jobActionAtlas : jobAtlas,
-          col * JOB_ATLAS_CELL,
-          row * JOB_ATLAS_CELL,
-          JOB_ATLAS_CELL,
-          JOB_ATLAS_CELL,
-          -size / 2,
-          -size * 0.91,
-          size,
-          size,
+          bounds[0],
+          bounds[1],
+          bounds[2],
+          bounds[3],
+          destX,
+          destY,
+          bounds[2] * artScale,
+          bounds[3] * artScale,
         );
         g.restore();
         return true;
@@ -1668,6 +2387,8 @@
         g.beginPath();
         g.ellipse(b.x + 36, b.y + 49, 16, 11, 0, 0, 7);
         g.fill();
+        const npc = BUILDING_NPCS[b.kind];
+        if (npc) drawBuildingNpc(b, npc, t);
         const restCount = b.kind === 'barracks' && townMap ? townMap.resting[b.team] : 0;
         const label = b.kind === 'smithy' ? '대장간' : b.kind === 'tower' ? '마법탑' : b.kind === 'shop' ? '무기점' : b.name;
         g.fillStyle = '#201726';
@@ -1680,6 +2401,41 @@
           rr(b.x + 8, b.y + 72, 68, 18, 5);
           g.fill();
           pixelText((expanded ? '표시 ' : '휴식 ') + restCount, b.x + 13, b.y + 85, 10, '#140f1f', 'left', true);
+        }
+      }
+
+      function drawBuildingNpc(b, npc, t) {
+        const x = b.x + 88;
+        const feetY = b.y + 63;
+        if (!npc.ready) {
+          drawJobSprite(x, feetY, npc.key, false, Boolean(npc.working), t, b.kind === 'smithy' ? 62 : 58);
+          return;
+        }
+        const bob = Math.sin(t / 420 + b.phase) * 1.2;
+        g.fillStyle = 'rgba(0,0,0,0.25)';
+        g.beginPath();
+        g.ellipse(x, feetY + 1, 18, 4, 0, 0, 7);
+        g.fill();
+        g.save();
+        g.translate(x, feetY + bob);
+        g.scale(1 - Math.sin(t / 520) * 0.002, 1 + Math.sin(t / 520) * 0.002);
+        g.drawImage(npc.image, -32, -64, 64, 64);
+        g.restore();
+        if (npc.effect === 'star') {
+          const pulse = 0.45 + 0.45 * Math.abs(Math.sin(t / 280));
+          g.save();
+          g.globalAlpha = pulse;
+          g.fillStyle = '#c8f7ff';
+          g.fillRect(x - 27, feetY - 43, 3, 9);
+          g.fillRect(x - 30, feetY - 40, 9, 3);
+          g.restore();
+        } else if (npc.effect === 'shine') {
+          const shine = Math.floor(t / 420 + b.phase) % 3 === 0;
+          if (shine) {
+            g.fillStyle = '#fff6d8';
+            g.fillRect(x + 18, feetY - 36, 3, 8);
+            g.fillRect(x + 15, feetY - 33, 9, 3);
+          }
         }
       }
 
@@ -2257,39 +3013,56 @@
       }
 
       function handoffDialogue(status) {
-        if (status === 'CODEX_RUNNING') return [{ team: 'codex', text: '구현 중...' }, { team: 'claude', text: '화이팅!' }];
-        if (status === 'CODEX_DONE') return [{ team: 'codex', text: '완료!' }, { team: 'claude', text: '확인할게' }];
+        if (isHandoffRunning(status)) return [{ team: 'codex', text: '구현 중...' }, { team: 'claude', text: '화이팅!' }];
+        if (isHandoffDone(status)) return [{ team: 'codex', text: '완료!' }, { team: 'claude', text: '확인할게' }];
         if (status === 'CODEX_FAILED') return [{ team: 'codex', text: '막혔어' }, { team: 'claude', text: '같이 보자' }];
         if (status === 'READY_FOR_CODEX_REVIEW') return [{ team: 'claude', text: '리뷰 부탁' }, { team: 'codex', text: '볼게' }];
         return [{ team: 'claude', text: '이거 맡아줘' }, { team: 'codex', text: '접수!' }];
       }
+      function isHandoffDone(status) {
+        return /(?:DONE|COMPLETE)/.test(String(status || ''));
+      }
+      function isHandoffRunning(status) {
+        return /^CODEX.*(?:RUNNING|IMPLEMENTING)/.test(String(status || ''));
+      }
       function handoffLabel(status) {
         if (status === 'READY_FOR_CODEX') return 'Codex에 넘김';
-        if (status === 'CODEX_RUNNING') return 'Codex 작업중';
-        if (status === 'CODEX_DONE') return 'Codex 완료';
+        if (isHandoffRunning(status)) return 'Codex 작업중';
+        if (status === 'CODEX_REVIEW_DONE') return '리뷰 완료';
+        if (/^CODEX.*(?:DONE|COMPLETE)/.test(String(status || ''))) return 'Codex 완료';
         if (status === 'CODEX_FAILED') return 'Codex 막힘';
         if (status === 'READY_FOR_CODEX_REVIEW') return '리뷰 요청';
-        if (status === 'CODEX_REVIEW_DONE') return '리뷰 완료';
         if (status === 'DONE' || status === 'DONE_REVERTED') return '완료됨';
         return status || '협업중';
       }
-      function drawMiniAgent(a, x, y, key, t, animate = false) {
+      function drawMiniAgent(a, x, y, key, t, animate = false, working = false, facing = 'left') {
         const cls = CLASSES[key] || CLASSES.mage;
         // drawCuteCharacter 내부 축소가 이미 있으므로 외부에서는 원본 크기를 유지한다.
         const scale = 1;
         const animT = animate ? t : 0;
+        const bob = animate ? Math.sin(t / 260 + x) * 1.8 : 0;
         const sx = Math.round(x - (SPR_W * scale) / 2);
-        const sy = Math.round(y - SPR_H * scale + (animate ? Math.sin(t / 260 + x) * 1.2 : 0));
+        const sy = Math.round(y - SPR_H * scale + bob);
         g.fillStyle = 'rgba(0,0,0,0.28)';
         g.beginPath();
         g.ellipse(x, y + 1, SPR_W * 0.25, 4, 0, 0, 7);
         g.fill();
-        if (drawJobSprite(x, y, key, false, animate, t, JOB_MINI_SIZE)) return;
+        if (drawJobSprite(x, y + bob, key, false, working, t, JOB_MINI_SIZE, facing)) return;
         g.save();
         g.translate(sx, sy);
+        if (facing === 'right') {
+          g.translate(SPR_W, 0);
+          g.scale(-1, 1);
+        }
         g.scale(scale, scale);
-        drawCuteCharacter(0, 0, key, cls, false, animate, animT);
+        drawCuteCharacter(0, 0, key, cls, false, working, animT);
         g.restore();
+      }
+      function handoffClassFor(a, team, project) {
+        const assigned = a?.id ? displayClassById.get(a.id) : null;
+        if (assigned && assigned !== 'courier') return assigned;
+        const pool = DISPLAY_JOB_POOLS[team];
+        return pool[hashOf(String(project || '') + ':' + team) % pool.length];
       }
       function drawHandoffScene(h, t) {
         const x = h.x, y = h.y;
@@ -2308,18 +3081,51 @@
         g.strokeStyle = '#c8955b';
         g.lineWidth = 2;
         g.stroke();
-        pixelText(groupName(h.project) + ' 길드 회의', x + 107, cardTop + 16, 11, '#ffd479', 'center', true);
+        const rawProjectName = groupName(h.project);
+        const projectName = rawProjectName.length > 15 ? rawProjectName.slice(0, 14) + '…' : rawProjectName;
+        pixelText(projectName + ' 길드 회의', x + 107, cardTop + 16, 10, '#ffd479', 'center', true);
         pixelText(handoffLabel(h.status), x + 107, cardTop + 29, 8, '#f1dfad', 'center');
         const transferActive = h.status === 'READY_FOR_CODEX' || h.status === 'READY_FOR_CODEX_REVIEW';
-        const workActive = h.status === 'CODEX_RUNNING';
-        drawMiniAgent(h.claude, x + 42, actorY, h.status === 'READY_FOR_CODEX' ? 'courier' : 'mage', t, transferActive);
-        drawMiniAgent(h.codex, x + 154, actorY, workActive ? 'smith' : 'warrior', t, transferActive || workActive);
+        const workActive = isHandoffRunning(h.status);
+        const doneActive = isHandoffDone(h.status);
+        const meetingNeedsResponse = h.claudeNeedsResponse || h.codexNeedsResponse;
+        const claudeClass = h.status === 'READY_FOR_CODEX' ? 'courier' : handoffClassFor(h.claude, 'claude', h.project);
+        const codexClass = handoffClassFor(h.codex, 'codex', h.project);
+        // 회의 왼쪽 캐릭터는 오른쪽, 오른쪽 캐릭터는 왼쪽을 바라본다.
+        drawMiniAgent(h.claude, x + 42, actorY, claudeClass, t, meetingNeedsResponse || transferActive || doneActive, false, 'right');
+        drawMiniAgent(h.codex, x + 154, actorY, codexClass, t, meetingNeedsResponse || transferActive || workActive || doneActive, workActive, 'left');
 
+        const drawMeetingAlert = (cx, feetY) => {
+          const pulse = REDUCED_MOTION ? 0 : Math.sin(t / 140) * 3;
+          g.strokeStyle = 'rgba(255,92,54,0.88)';
+          g.lineWidth = 2;
+          g.beginPath();
+          g.ellipse(cx, feetY + 5, 27 + Math.abs(pulse), 8 + Math.abs(pulse) * 0.35, 0, 0, 7);
+          g.stroke();
+          g.fillStyle = '#4a1616';
+          rr(cx - 11, feetY - 72 + pulse, 22, 22, 7);
+          g.fill();
+          g.strokeStyle = '#ff784a';
+          g.lineWidth = 2;
+          g.stroke();
+          pixelText('!', cx, feetY - 56 + pulse, 16, '#fff0c2', 'center', true);
+          g.fillStyle = 'rgba(74,22,22,0.96)';
+          rr(cx - 35, feetY + 13, 70, 17, 5);
+          g.fill();
+          pixelText('응답 필요', cx, feetY + 25, 9, '#ffcf5a', 'center', true);
+        };
         const dialogue = handoffDialogue(h.status);
-        const line = dialogue[transferActive || workActive ? Math.floor(t / 1800) % dialogue.length : 0];
+        const line = meetingNeedsResponse
+          ? { team: h.codexNeedsResponse ? 'claude' : 'codex', text: '응답이 왔어!' }
+          : dialogue[transferActive || workActive || doneActive ? Math.floor(t / 1800) % dialogue.length : 0];
         const bubbleY = cardTop + 42;
         if (line.team === 'claude') drawBubble(line.text, x + 8, bubbleY, '#c8a2ff', 'left');
         else drawBubble(line.text, x + 202, bubbleY, '#8fd0ff', 'right');
+        // 회의 중 한쪽에 질문이 도착하면 두 캐릭터가 함께 반응한다. 어느 쪽을 눌러도 실제 응답 세션이 열린다.
+        if (meetingNeedsResponse) {
+          drawMeetingAlert(x + 42, actorY);
+          drawMeetingAlert(x + 154, actorY);
+        }
 
         if (transferActive) {
           const p = (1 - Math.cos(t / 920)) / 2;
@@ -2339,17 +3145,18 @@
           g.fillStyle = '#8a6a3a';
           g.fillRect(sx, sy, 12, 2);
         }
-        if (h.status === 'CODEX_DONE') pixelText('+XP', x + 104, actorY - 9, 10, '#ffd479', 'center', true);
+        if (doneActive) {
+          const xpLift = REDUCED_MOTION ? 0 : Math.sin(t / 260) * 2;
+          pixelText('+XP', x + 104, actorY - 9 + xpLift, 10, '#ffd479', 'center', true);
+        }
 
-        const claudeName = String(h.claude?.name || 'Claude').slice(0, 7);
-        const codexName = String(h.codex?.name || 'Codex').slice(0, 7);
         g.fillStyle = '#1b1526';
-        rr(x - 2, actorY + 5, 88, 17, 5);
+        rr(x + 12, actorY + 5, 60, 17, 5);
         g.fill();
-        rr(x + 110, actorY + 5, 88, 17, 5);
+        rr(x + 124, actorY + 5, 60, 17, 5);
         g.fill();
-        pixelText('Claude · ' + claudeName, x + 42, actorY + 17, 7, '#c8a2ff', 'center', true);
-        pixelText('Codex · ' + codexName, x + 154, actorY + 17, 7, '#8fd0ff', 'center', true);
+        pixelText('Claude', x + 42, actorY + 17, 7, '#c8a2ff', 'center', true);
+        pixelText('Codex', x + 154, actorY + 17, 7, '#8fd0ff', 'center', true);
       }
 
       // ── 상태 ─────────────────────────────────────────────────────────────
@@ -2362,6 +3169,20 @@
       function tokenPct(t) {
         if (!t || !t.window) return null;
         return Math.min(100, Math.round((t.context / t.window) * 100));
+      }
+      function tokenUsageLabel(a) {
+        const context = Number(a?.tokens?.context);
+        const windowSize = Number(a?.tokens?.window);
+        const hasContext = Number.isFinite(context) && context >= 0;
+        const hasWindow = Number.isFinite(windowSize) && windowSize > 0;
+        if (hasContext && hasWindow) {
+          return Math.min(100, Math.round((context / windowSize) * 100)) + '% 사용 · ' +
+            Math.round(context).toLocaleString('ko-KR') + ' / ' + Math.round(windowSize).toLocaleString('ko-KR') + ' 토큰';
+        }
+        if (hasContext) {
+          return '수집된 사용량 ' + Math.round(context).toLocaleString('ko-KR') + ' 토큰 · 전체 한도 미확인';
+        }
+        return '사용량 수집 중';
       }
 
       // ── 레이아웃 ────────────────────────────────────────────────────────
@@ -2388,6 +3209,9 @@
         MEMBER_GAP_Y = 92,
         MEMBER_MIN_DIST = 92,
         MEMBER_REST_MIN_DIST = 72;
+      const FORMATION_GAP_X = 132,
+        FORMATION_GAP_Y = 140,
+        URGENT_FORMATION_GAP_Y = 174;
       const CELL_W = 116,
         CELL_H = 142;
       const PER_ROW_MIN = 3;
@@ -2428,10 +3252,11 @@
         }
         const W = window.innerWidth;
         const H = window.innerHeight;
+        const compactMap = W < 900;
         // 세션 패널: left 14 + width 300 + 안전 여백 20.
         const sideW = W >= 900 ? 334 : 24;
         const areaX = sideW;
-        const areaW = Math.max(640, W - areaX - 24);
+        const areaW = Math.max(300, W - areaX - 24);
 
         const byGroup = new Map();
         for (const a of activeAgents) {
@@ -2450,30 +3275,55 @@
         const claudeActive = fieldAgents.filter((a) => teamOf(a) !== 'codex' && a.state !== 'failed').length;
         const codexActive = fieldAgents.filter((a) => teamOf(a) === 'codex' && a.state !== 'failed').length;
         const maxTeam = Math.max(claudeActive, codexActive, 1);
-        const battleZoneW = Math.max(300, areaW * 0.38);
-        const mapCols = Math.max(1, Math.min(5, Math.floor((battleZoneW - 116) / MEMBER_GAP_X) + 1));
-        const mapRows = Math.max(1, Math.ceil(maxTeam / mapCols));
-        const mapH = Math.max(H - 172, 560, 430 + mapRows * MEMBER_GAP_Y);
+        const battleZoneW = compactMap ? Math.max(244, areaW - 56) : Math.max(300, areaW * 0.38);
+        const mapCols = Math.max(1, Math.min(5, Math.floor((battleZoneW - 72) / FORMATION_GAP_X) + 1));
+        const claudeRows = Math.max(1, Math.ceil(claudeActive / mapCols));
+        const codexRows = Math.max(1, Math.ceil(codexActive / mapCols));
+        const mapRows = compactMap ? claudeRows + codexRows : Math.max(claudeRows, codexRows);
+        const claudeUrgent = fieldAgents.some((a) => teamOf(a) !== 'codex' && a.state !== 'failed' && needsResponse(a));
+        const codexUrgent = fieldAgents.some((a) => teamOf(a) === 'codex' && a.state !== 'failed' && needsResponse(a));
+        const compactZoneH = (rows, urgent) => 142 + rows * (urgent ? URGENT_FORMATION_GAP_Y : FORMATION_GAP_Y);
+        const handoffW = Math.min(520, areaW - 40);
+        const handoffProjectCount = Math.min(
+          2,
+          new Set(floor.filter((a) => a.project && isHandoffAgent(a)).map((a) => a.project)).size,
+        );
+        const handoffCols = Math.max(1, Math.floor((handoffW - 36) / 258));
+        const handoffRows = Math.max(1, Math.ceil(handoffProjectCount / handoffCols));
+        const handoffRowStep = 192;
+        const handoffZoneH = 190 + (handoffRows - 1) * handoffRowStep;
+        const compactBattleOffset = handoffProjectCount ? 92 + handoffZoneH : 250;
+        const compactContentH = compactBattleOffset + compactZoneH(claudeRows, claudeUrgent) + 32 + compactZoneH(codexRows, codexUrgent) + 190;
+        const mapH = compactMap
+          ? Math.max(H - 172, 760, compactContentH)
+          : Math.max(H - 172, 620, 470 + mapRows * (claudeUrgent || codexUrgent ? URGENT_FORMATION_GAP_Y : FORMATION_GAP_Y));
         const plaza = { x: areaX + areaW * 0.50, y: townY + mapH * 0.48 };
+        const claudeZone = compactMap
+          ? { x: areaX + 28, y: townY + compactBattleOffset, w: areaW - 56, h: compactZoneH(claudeRows, claudeUrgent) }
+          : { x: areaX + 62, y: townY + 250, w: Math.max(300, areaW * 0.38), h: Math.max(330, mapH * 0.45) };
+        const codexZone = compactMap
+          ? { x: areaX + 28, y: claudeZone.y + claudeZone.h + 32, w: areaW - 56, h: compactZoneH(codexRows, codexUrgent) }
+          : { x: areaX + areaW - Math.max(300, areaW * 0.38) - 62, y: townY + 250, w: Math.max(300, areaW * 0.38), h: Math.max(330, mapH * 0.45) };
+        const knockW = Math.min(420, areaW - 40);
         townMap = {
           x: areaX - 16,
           y: townY - 18,
           w: areaW + 32,
           h: mapH,
           plaza,
-          handoffZone: { x: areaX + areaW * 0.5 - 260, y: townY + 52, w: 520, h: 190 },
-          claudeZone: { x: areaX + 62, y: townY + 250, w: Math.max(300, areaW * 0.38), h: Math.max(250, mapH * 0.42) },
-          codexZone: { x: areaX + areaW - Math.max(300, areaW * 0.38) - 62, y: townY + 250, w: Math.max(300, areaW * 0.38), h: Math.max(250, mapH * 0.42) },
-          knockZone: { x: areaX + areaW * 0.5 - 210, y: townY + mapH - 164, w: 420, h: 104 },
+          handoffZone: { x: areaX + (areaW - handoffW) / 2, y: townY + 52, w: handoffW, h: handoffZoneH },
+          claudeZone,
+          codexZone,
+          knockZone: { x: areaX + (areaW - knockW) / 2, y: townY + mapH - 164, w: knockW, h: 104 },
           resting: {
             claude: restingAgents.filter((a) => a.kind !== 'codex').length,
             codex: restingAgents.filter((a) => a.kind === 'codex').length,
           },
         };
         const baseBuildings = [
-          { kind: 'tower', name: '마법탑', cwd: floor.find((a) => a.kind !== 'codex' && a.project)?.project || floor[0]?.project || '', command: 'claude' },
-          { kind: 'smithy', name: '대장간', cwd: floor.find((a) => a.kind === 'codex' && a.project)?.project || floor[0]?.project || '', command: 'codex' },
-          { kind: 'shop', name: '무기점', cwd: floor[0]?.project || '', command: 'codex' },
+          { kind: 'tower', name: '마법탑', npcName: '탑지기', cwd: floor[0]?.project || '', command: 'cleanup' },
+          { kind: 'smithy', name: '대장간', npcName: '대장장이', cwd: floor.find((a) => a.kind !== 'codex' && a.project)?.project || floor[0]?.project || '', command: 'claude' },
+          { kind: 'shop', name: '무기점', npcName: '무기상', cwd: floor[0]?.project || '', command: 'codex' },
           { kind: 'barracks', name: 'Claude 휴게소', cwd: '', command: '', team: 'claude' },
           { kind: 'barracks', name: 'Codex 휴게소', cwd: '', command: '', team: 'codex' },
         ];
@@ -2547,13 +3397,19 @@
         let hi = 0;
         for (const [project, list] of byProject) {
           const status = list.find((a) => a.aiHandoff)?.aiHandoff;
+          const claudeAgents = list.filter((a) => a.kind !== 'codex');
+          const codexAgents = list.filter((a) => a.kind === 'codex');
+          const claudeNeedsResponse = claudeAgents.some(needsResponse);
+          const codexNeedsResponse = codexAgents.some(needsResponse);
           handoffs.push({
             project,
             status,
-            claude: list.find((a) => a.kind !== 'codex') || { id: 'npc-c-' + project, name: 'Claude', kind: 'claude', state: 'idle', project, tokens: { context: 50000, window: 258000 }, aiHandoff: status },
-            codex: list.find((a) => a.kind === 'codex') || { id: 'npc-x-' + project, name: 'Codex', kind: 'codex', state: 'idle', project, tokens: { context: 50000, window: 258000 }, aiHandoff: status },
-            x: townMap.handoffZone.x + 18 + (hi % 2) * 258,
-            y: townMap.handoffZone.y + 154 + Math.floor(hi / 2) * 136,
+            claude: claudeAgents.find(needsResponse) || claudeAgents[0] || { id: 'npc-c-' + project, name: 'Claude', kind: 'claude', state: 'idle', project, tokens: { context: 50000, window: 258000 }, aiHandoff: status },
+            codex: codexAgents.find(needsResponse) || codexAgents[0] || { id: 'npc-x-' + project, name: 'Codex', kind: 'codex', state: 'idle', project, tokens: { context: 50000, window: 258000 }, aiHandoff: status },
+            claudeNeedsResponse,
+            codexNeedsResponse,
+            x: townMap.handoffZone.x + 18 + (hi % handoffCols) * 258,
+            y: townMap.handoffZone.y + 154 + Math.floor(hi / handoffCols) * handoffRowStep,
           });
           hi++;
           if (hi >= 2) break;
@@ -2561,10 +3417,9 @@
 
         const buildingFor = (a) => {
           if (a.aiHandoff && a.aiHandoff !== 'IDLE') return { x: townMap.handoffZone.x + townMap.handoffZone.w / 2 - 36, y: townMap.handoffZone.y + townMap.handoffZone.h - 78 };
-          if (classKeyOf(a) === 'smith') return buildings.find((b) => b.kind === 'smithy') || buildings[0];
           if (classKeyOf(a) === 'courier') return buildings.find((b) => b.kind === 'shop') || buildings[0];
-          if ((CLASSES[classKeyOf(a)] || CLASSES.mage).base === 'mage') return buildings.find((b) => b.kind === 'tower') || buildings[0];
-          return buildings.find((b) => b.name === groupName(a.project)) || buildings.find((b) => b.kind === 'shop') || buildings[0];
+          if (teamOf(a) === 'codex') return buildings.find((b) => b.kind === 'shop') || buildings[0];
+          return buildings.find((b) => b.kind === 'smithy') || buildings[0];
         };
 
         const visibleAgents = floor.filter((a) => {
@@ -2572,9 +3427,25 @@
           if (activeAgents.includes(a)) return true;
           return shownRestingTeams.has(teamOf(a));
         });
+        const activityPocketRatios = compactMap
+          ? [
+              [0.22, 0.24], [0.74, 0.29],
+              [0.34, 0.38], [0.78, 0.43],
+              [0.19, 0.51], [0.64, 0.56],
+              [0.83, 0.64], [0.31, 0.67],
+              [0.67, 0.75], [0.18, 0.79],
+              [0.45, 0.86], [0.80, 0.84],
+            ]
+          : [
+              [0.12, 0.43], [0.34, 0.39], [0.60, 0.44], [0.86, 0.40],
+              [0.22, 0.56], [0.48, 0.52], [0.74, 0.57], [0.91, 0.53],
+              [0.11, 0.68], [0.36, 0.65], [0.62, 0.69], [0.84, 0.66],
+            ];
+        const activityPockets = activityPocketRatios.map(([rx, ry]) => ({
+          x: areaX + areaW * rx,
+          y: townY + mapH * ry,
+        }));
         const visibleByTeam = {
-          claude: visibleAgents.filter((a) => teamOf(a) !== 'codex' && a.state !== 'failed' && isMapControllable(a)),
-          codex: visibleAgents.filter((a) => teamOf(a) === 'codex' && a.state !== 'failed' && isMapControllable(a)),
           failed: visibleAgents.filter((a) => a.state === 'failed'),
           restClaude: visibleAgents.filter((a) => teamOf(a) !== 'codex' && (a.state === 'idle' || a.state === 'unknown')),
           restCodex: visibleAgents.filter((a) => teamOf(a) === 'codex' && (a.state === 'idle' || a.state === 'unknown')),
@@ -2583,28 +3454,16 @@
             const h = hashOf(a.id || a.name || i);
             const home = buildingFor(a);
             const gate = { x: home.x + 36, y: home.y + 82 };
-            const plazaSlot = {
-              x: plaza.x + ((h % 9) - 4) * 24,
-              y: plaza.y + (((h >> 4) % 7) - 3) * 18,
+            const pocket = activityPockets[i % activityPockets.length];
+            const pocketRound = Math.floor(i / activityPockets.length);
+            const pocketAngle = ((h % 360) * Math.PI) / 180;
+            const pocketRadius = pocketRound ? 76 + (pocketRound - 1) * 34 : 0;
+            const activitySlot = {
+              x: pocket.x + Math.cos(pocketAngle) * pocketRadius + ((h % 19) - 9) * 2.1,
+              y: pocket.y + Math.sin(pocketAngle) * pocketRadius * 0.7 + (((h >> 5) % 17) - 8) * 1.7,
             };
-            const battleZone = teamOf(a) === 'codex' ? townMap.codexZone : townMap.claudeZone;
-            const teamKey = teamOf(a) === 'codex' ? 'codex' : 'claude';
-            const teamList = visibleByTeam[teamKey];
-            const teamIndex = Math.max(0, teamList.indexOf(a));
-            const maxColsByWidth = Math.max(1, Math.floor((battleZone.w - 116) / MEMBER_GAP_X) + 1);
-            const preferredCols = Math.ceil(Math.sqrt(Math.max(1, teamList.length) * 1.25));
-            const zoneCols = Math.max(1, Math.min(5, maxColsByWidth, preferredCols));
-            const zoneRows = Math.max(1, Math.ceil(Math.max(1, teamList.length) / zoneCols));
-            const zone = teamIndex;
-            const zx = zone % zoneCols;
-            const zy = Math.floor(zone / zoneCols);
-            const zoneStepX = zoneCols > 1 ? Math.max(MEMBER_GAP_X, (battleZone.w - 116) / Math.max(1, zoneCols - 1)) : 0;
-            const spreadSlot = {
-              x: battleZone.x + 58 + zx * zoneStepX + ((h % 11) - 5),
-              y: battleZone.y + 74 + zy * MEMBER_GAP_Y + (((h >> 5) % 9) - 4),
-            };
-            spreadSlot.x = Math.min(battleZone.x + battleZone.w - 58, spreadSlot.x);
-            spreadSlot.y = Math.min(battleZone.y + battleZone.h - 42, spreadSlot.y);
+            activitySlot.x = Math.min(areaX + areaW - 54, Math.max(areaX + 54, activitySlot.x));
+            activitySlot.y = Math.min(townY + mapH - 196, Math.max(townY + 250, activitySlot.y));
             const failedIndex = Math.max(0, visibleByTeam.failed.indexOf(a));
             const knockSlot = {
               x: townMap.knockZone.x + 48 + (failedIndex % 5) * 70,
@@ -2622,8 +3481,8 @@
               : (a.state === 'idle' || a.state === 'unknown') && !isMapControllable(a)
                 ? restSlot
                 : a.state === 'needs_input'
-                  ? { x: spreadSlot.x, y: spreadSlot.y }
-                  : spreadSlot;
+                  ? { x: activitySlot.x, y: activitySlot.y }
+                  : activitySlot;
             const route = [
               gate,
               { x: gate.x, y: workSlot.y },
@@ -2676,7 +3535,15 @@
           }
         }
         const obstacles = buildings.map((b) => ({ x: b.x - 18, y: b.y - 14, w: b.w + 36, h: b.h + 62 }));
-        obstacles.push({ x: townMap.handoffZone.x - 10, y: townMap.handoffZone.y - 8, w: townMap.handoffZone.w + 20, h: townMap.handoffZone.h + 16 });
+        if (handoffs.length) {
+          // 길드 회의 카드뿐 아니라 캐릭터 본체와 긴급 말풍선 높이까지 포함한 금지 구역.
+          obstacles.push({
+            x: townMap.handoffZone.x - 72,
+            y: townMap.handoffZone.y - 34,
+            w: townMap.handoffZone.w + 144,
+            h: townMap.handoffZone.h + 194,
+          });
+        }
         for (let pass = 0; pass < 3; pass++) {
           for (const m of members) {
             if (m.a.state === 'failed') continue;
@@ -2704,19 +3571,23 @@
         if (!sessionPanelEl) return;
         const searchWasFocused = document.activeElement && document.activeElement.id === 'sessionSearch';
         const query = sessionFilter.trim().toLocaleLowerCase('ko');
-        const rows = members
-          .slice()
-          .filter((m) => {
+        const rows = agents
+          .filter((a) => !stashedIds.has(a.id))
+          .map((a, index) => {
+            const member = members.find((m) => m.a.id === a.id) || null;
+            return { a, member, no: member?.no || index + 1 };
+          })
+          .filter((row) => {
             if (!query) return true;
-            const a = m.a;
-            return [agentDisplayName(a), a.project, groupName(a.project), toolLabel(a), stateLabel(a.state)]
+            const a = row.a;
+            return [sessionDisplayTitle(a), agentDisplayName(a), a.project, groupName(a.project), toolLabel(a), stateLabel(effectiveState(a))]
               .filter(Boolean)
               .join(' ')
               .toLocaleLowerCase('ko')
               .includes(query);
           })
           .sort((a, b) => {
-            const rank = (m) => (needsResponse(m.a) ? 0 : m.a.state === 'working' ? 1 : m.a.state === 'failed' ? 2 : 3);
+            const rank = (row) => (needsResponse(row.a) ? 0 : row.a.state === 'working' ? 1 : row.a.state === 'failed' ? 2 : 3);
             return rank(a) - rank(b) || a.no - b.no;
           })
           .slice(0, 18);
@@ -2751,27 +3622,32 @@
         if (!rows.length) {
           html += '<div class="sp-meta">' + (query ? '검색 결과가 없습니다.' : '표시할 세션이 없습니다.') + '</div>';
         }
-        for (const m of rows) {
-          const a = m.a;
+        for (const row of rows) {
+          const a = row.a;
           const color = stateColor(a);
           const tool = toolLabel(a);
-          const name = agentDisplayName(a).slice(0, 34);
-          const project = groupName(a.project);
+          const name = agentDisplayName(a).slice(0, 80);
+          const title = sessionDisplayTitle(a);
+          const cls = CLASSES[classKeyOf(a)] || CLASSES.mage;
+          const projectPath = String(a.project || '경로 없음');
+          const recent = String(a.lastMessage || '').trim();
           const controllable = Number.isFinite(Number(a.pid));
           const itemCls = needsResponse(a) ? ' need' : a.state === 'working' ? ' working' : a.state === 'failed' ? ' failed' : '';
           html +=
             '<div class="sp-item' + itemCls + '" data-id="' + esc(a.id) + '">' +
-            '<div class="sp-no" style="color:' + color + '">' + m.no + '</div>' +
+            '<div class="sp-no" style="color:' + color + '">' + row.no + '</div>' +
             '<div>' +
-            '<div class="sp-name">' + esc(name) + '</div>' +
-            '<span class="sp-badge" style="color:' + (needsResponse(a) ? '#ff784a' : color) + '">' + esc(needsResponse(a) ? '응답 필요' : stateLabel(a.state)) + '</span>' +
-            '<span class="sp-badge">' + esc(tool) + '</span>' +
-            '<span class="sp-badge">' + (controllable ? '조작 가능' : 'pid 없음') + '</span>' +
-            '<div class="sp-meta">프로젝트: ' + esc(project) + '</div>' +
+            '<div class="sp-name" title="' + esc(title) + '">' + esc(title) + '</div>' +
+            '<span class="sp-badge" style="color:' + (needsResponse(a) ? '#ff784a' : color) + '">' + esc(needsResponse(a) ? '응답 필요' : stateLabel(effectiveState(a))) + '</span>' +
+            '<span class="sp-badge">' + esc(tool + ' · ' + cls.name) + '</span>' +
+            '<span class="sp-badge">' + (controllable ? esc(terminalAppLabel(a) + ' · PID ' + a.pid) : 'PID 없음') + '</span>' +
+            '<div class="sp-field"><span>시작 요청</span><b>' + esc(name) + '</b></div>' +
+            '<div class="sp-field"><span>프로젝트</span><b title="' + esc(projectPath) + '">' + esc(projectPath.slice(-48)) + '</b></div>' +
+            (recent ? '<div class="sp-field response"><span>최근 응답</span><b>' + esc(recent.slice(0, 110)) + (recent.length > 110 ? '…' : '') + '</b></div>' : '') +
             '</div>' +
             '<div class="sp-actions">' +
-            (controllable ? '<button class="primary" data-sp="screen" data-id="' + esc(a.id) + '">대화창</button><button data-sp="enter" data-id="' + esc(a.id) + '">Enter</button>' : '') +
-            '<button data-sp="focus-map" data-id="' + esc(a.id) + '">캐릭터 찾기</button>' +
+            (controllable ? '<button class="primary" data-sp="screen" data-id="' + esc(a.id) + '">웹 대화창</button><button data-sp="focus" data-id="' + esc(a.id) + '">실제 터미널로 전환</button>' : '') +
+            (row.member ? '<button data-sp="focus-map" data-id="' + esc(a.id) + '">지도에서 찾기</button>' : '') +
             (controllable ? '<button class="danger" data-sp="kill" data-id="' + esc(a.id) + '">세션 종료…</button>' : '') +
             (a.state === 'failed' ? '<button data-sp="stash" data-id="' + esc(a.id) + '">숨기기</button>' : '') +
             '</div>' +
@@ -2788,6 +3664,7 @@
       }
 
       let latestT = 0;
+      let lastFramePaint = 0;
       function routePoint(route, p) {
         if (!route || route.length < 2) return route && route[0] ? route[0] : { x: 0, y: 0 };
         const seg = Math.min(route.length - 2, Math.floor(p * (route.length - 1)));
@@ -2800,31 +3677,20 @@
         return { x: m.x, y: m.y };
       }
 
-      // 팀별 독립 격자에 한 명씩 배치한다. 격자 칸은 캐릭터 전체 크기보다 커서 서로 겹칠 수 없다.
+      // layout에서 건물·광장·길목으로 흩어 놓은 최종 좌표를 그대로 사용한다.
       function separatedMemberPositions(t) {
         const positions = new Map();
         if (!townMap) return new Map(members.map((m) => [m, memberPos(m, t)]));
-        const groups = {
-          claude: members.filter((m) => m.a.state !== 'failed' && teamOf(m.a) !== 'codex'),
-          codex: members.filter((m) => m.a.state !== 'failed' && teamOf(m.a) === 'codex'),
-          failed: members.filter((m) => m.a.state === 'failed'),
+        const viewportLeft = window.innerWidth >= 900 ? 334 : 0;
+        const minVisibleX = viewportLeft + JOB_RENDER_HALF_WIDTH;
+        const maxVisibleX = window.innerWidth - JOB_RENDER_HALF_WIDTH;
+        const clampVisibleX = (x) => {
+          if (maxVisibleX <= minVisibleX) return window.innerWidth / 2;
+          return Math.max(minVisibleX, Math.min(maxVisibleX, x));
         };
-        const placeGroup = (list, zone, topPadding = 104) => {
-          const stepX = 112;
-          const stepY = 118;
-          const cols = Math.max(1, Math.floor((zone.w - 72) / stepX));
-          const usedW = (cols - 1) * stepX;
-          const startX = zone.x + (zone.w - usedW) / 2;
-          list.forEach((m, index) => {
-            positions.set(m, {
-              x: startX + (index % cols) * stepX,
-              y: zone.y + topPadding + Math.floor(index / cols) * stepY,
-            });
-          });
-        };
-        placeGroup(groups.claude, townMap.claudeZone);
-        placeGroup(groups.codex, townMap.codexZone);
-        placeGroup(groups.failed, townMap.knockZone, 86);
+        for (const m of members) {
+          positions.set(m, { x: clampVisibleX(m.x), y: m.y });
+        }
         return positions;
       }
 
@@ -4534,6 +5400,11 @@
       let hoverBuilding = null;
 
       function frame(t) {
+        if (t - lastFramePaint < 1000 / 30) {
+          requestAnimationFrame(frame);
+          return;
+        }
+        lastFramePaint = t;
         if (REDUCED_MOTION) t = 0;
         latestT = t;
         const W = window.innerWidth,
@@ -4721,21 +5592,26 @@
             g.stroke();
             pixelText('!', pos.x, alertY + 4, 16, '#fff0c2', 'center', true);
 
-            const callY = spriteTop - 76 + urgentPulse;
-            const callW = 116;
-            g.fillStyle = 'rgba(74,22,22,0.97)';
-            rr(pos.x - callW / 2, callY - 19, callW, 38, 8);
-            g.fill();
-            g.strokeStyle = '#ff784a';
-            g.lineWidth = 2;
-            g.stroke();
-            g.beginPath();
-            g.moveTo(pos.x - 7, callY + 19);
-            g.lineTo(pos.x, callY + 27);
-            g.lineTo(pos.x + 7, callY + 19);
-            g.fill();
-            pixelText('응답이 필요해요!', pos.x, callY - 2, 11, '#fff0c2', 'center', true);
-            pixelText('캐릭터를 클릭하세요', pos.x, callY + 12, 8, '#ffcf5a', 'center', true);
+            // 응답이 필요한 사람은 일부 대표만이 아니라 각 캐릭터가 직접 말풍선으로 알린다.
+            if (need) {
+              const callY = spriteTop - 76 + urgentPulse;
+              const callW = 116;
+              const viewportLeft = window.innerWidth >= 900 ? 334 : 0;
+              const callX = Math.max(viewportLeft + callW / 2 + 6, Math.min(window.innerWidth - callW / 2 - 6, pos.x));
+              g.fillStyle = 'rgba(74,22,22,0.97)';
+              rr(callX - callW / 2, callY - 19, callW, 38, 8);
+              g.fill();
+              g.strokeStyle = '#ff784a';
+              g.lineWidth = 2;
+              g.stroke();
+              g.beginPath();
+              g.moveTo(pos.x - 7, callY + 19);
+              g.lineTo(pos.x, callY + 27);
+              g.lineTo(pos.x + 7, callY + 19);
+              g.fill();
+              pixelText('응답이 필요해요!', callX, callY - 2, 11, '#fff0c2', 'center', true);
+              pixelText('캐릭터를 클릭하세요', callX, callY + 12, 8, '#ffcf5a', 'center', true);
+            }
           }
           const moveReason = !failed && hover?.m === m && (need ? '도움 요청' : classKey === 'courier' ? '전령 전달' : '');
           if (moveReason) {
@@ -4748,7 +5624,7 @@
           }
 
           // 이름 + 직업
-          const displayName = agentDisplayName(a);
+          const displayName = sessionDisplayTitle(a);
           const nm = displayName.length > 12 ? displayName.slice(0, 11) + '…' : displayName;
           const focused = hover?.m === m || need || failed;
           if (hover?.m === m) {
@@ -4791,7 +5667,7 @@
             done: '완료',
           }[a.state] || a.state;
           tip.innerHTML =
-            '<div class="t-name">' + esc(agentDisplayName(a)) + '</div>' +
+            '<div class="t-name">' + esc(sessionDisplayTitle(a)) + '</div>' +
             '<div class="t-job">' + (a.kind === 'codex' ? 'Codex' : 'Claude') + ' · ' + esc(cls.name) + ' · Lv.' + levelOf(a) + '</div>' +
             '<div class="t-role">' + st + (a.project ? ' · ' + esc(groupName(a.project)) : '') + '</div>' +
             (a.lastMessage ? '<div class="t-msg">' + esc(a.lastMessage.slice(0, 64)) + (a.lastMessage.length > 64 ? '...' : '') + '</div>' : '');
@@ -4810,9 +5686,10 @@
               '<div class="t-role">작업하지 않는 캐릭터를 잠시 모아 지도를 깔끔하게 유지합니다.</div>' +
               '<div class="t-hint">클릭 → ' + (expanded ? '다시 숨기기' : '지도에 펼쳐 보기') + '</div>';
           } else {
+            const resident = hoverBuilding.npcName ? ' · 상주 NPC ' + esc(hoverBuilding.npcName) : '';
             tip.innerHTML =
               '<div class="t-name">' + esc(hoverBuilding.name) + '</div>' +
-              '<div class="t-job">새 세션 시작 · ' + esc(fixed) + '</div>' +
+              '<div class="t-job">새 세션 시작 · ' + esc(fixed) + resident + '</div>' +
               '<div class="t-role">' + esc(hoverBuilding.cwd || '폴더 미정') + '</div>' +
               '<div class="t-hint">클릭 → 터미널 세션 열기</div>';
           }
@@ -4866,7 +5743,7 @@
           const tool = a.kind === 'codex' ? 'Cdx' : 'Cl';
           const st = need ? '!' : failed ? 'x' : '>';
           pixelText(tool + ' ' + st, x + 40, qy, 8, badgeColor, 'left', true);
-          pixelText(agentDisplayName(a).slice(0, 16), x + 76, qy, 8, '#eee6d8', 'left');
+          pixelText(sessionDisplayTitle(a).slice(0, 16), x + 76, qy, 8, '#eee6d8', 'left');
           qy += 24;
         }
       }
@@ -4879,6 +5756,14 @@
       let jobmenuFor = null;
       let sessionmenuFor = null;
       let controlPanelFor = null;
+      let controlPanelTab = 'activity';
+      let controlPendingAction = null;
+      let controlPendingSignature = '';
+      let controlMultiSelections = new Set();
+      let controlRefreshTimer = null;
+      let responseConfirmResolve = null;
+      let responseConfirmFocus = null;
+      const controlReadsInFlight = new Set();
       let pickerMembers = [];
       let toastTimer = null;
       function rememberFocus() {
@@ -4904,6 +5789,27 @@
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => (toastEl.style.display = 'none'), 2600);
       }
+      function closeResponseConfirm(approved = false) {
+        if (!responseConfirmEl.classList.contains('open')) return;
+        responseConfirmEl.classList.remove('open');
+        const resolve = responseConfirmResolve;
+        responseConfirmResolve = null;
+        if (responseConfirmFocus && document.contains(responseConfirmFocus)) responseConfirmFocus.focus();
+        responseConfirmFocus = null;
+        if (resolve) resolve(approved);
+      }
+      function confirmResponseSend({ title = '터미널로 보낼까요?', preview = '', submitLabel = '응답 보내기' } = {}) {
+        if (responseConfirmResolve) closeResponseConfirm(false);
+        responseConfirmFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        responseConfirmTitleEl.textContent = title;
+        responseConfirmPreviewEl.textContent = preview || 'Enter 키';
+        responseConfirmSubmitEl.textContent = submitLabel;
+        responseConfirmEl.classList.add('open');
+        requestAnimationFrame(() => responseConfirmEl.querySelector('[data-response-confirm="cancel"]')?.focus());
+        return new Promise((resolve) => {
+          responseConfirmResolve = resolve;
+        });
+      }
       function openAgentInteraction(m, clientX = mouse.x, clientY = mouse.y) {
         const pid = Number(m?.a?.pid);
         if (Number.isFinite(pid) && isMapControllable(m.a)) {
@@ -4920,20 +5826,21 @@
         jobmenuFor = m;
         const a = m.a;
         const cls = CLASSES[classKeyOf(a)] || CLASSES.mage;
-        const state = stateLabel(a.state);
+        const need = needsResponse(a);
+        const state = stateLabel(effectiveState(a));
         const tool = toolLabel(a);
         const canControl = Number.isFinite(Number(a.pid));
-        let html = '<div class="jm-head">' + m.no + '. ' + esc(agentDisplayName(a).slice(0, 30)) + '</div>';
+        let html = '<div class="jm-head">' + m.no + '. ' + esc(sessionDisplayTitle(a).slice(0, 42)) + '</div>';
         html += '<div class="jm-status">';
         html += '<b>도구</b><span>' + esc(tool) + ' · ' + esc(cls.name) + '</span>';
         html += '<b>자동 직업</b><span>' + esc(classReason(a)) + '</span>';
         html += '<b>상태</b><span>' + esc(state) + (canControl ? ' · 웹에서 조작 가능' : ' · pid 없음') + '</span>';
         html += '<b>위치</b><span>' + esc(groupName(a.project)) + '</span>';
-        if ((a.state === 'needs_input' || a.state === 'failed') && a.lastMessage) {
+        if ((need || a.state === 'failed') && a.lastMessage) {
           html += '<b>최근 내용</b><span>' + esc(String(a.lastMessage).slice(0, 120)) + '</span>';
         }
         html += '</div>';
-        if (a.state === 'needs_input') {
+        if (need) {
           html += canControl
             ? '<div class="jm-guide"><b>⚠ 위기 대처 방법</b>1. 아래 “요청 내용 확인”으로 질문을 읽습니다.<br>2. 권한 요청이면 Y/N, 선택 질문이면 번호를 보냅니다.<br>3. 판단이 어렵거나 민감한 작업이면 실제 터미널에서 확인합니다.</div>'
             : '<div class="jm-guide"><b>⚠ 기존 세션에 연결할 수 없음</b>터미널 연결 정보(pid)가 없어 이 기록에는 답변을 보낼 수 없습니다. 아래 버튼으로 같은 작업 폴더에서 새 세션을 시작할 수 있습니다.</div>';
@@ -4943,25 +5850,25 @@
           html += menuButton('retry', 'primary', '↻', '같은 프로젝트에서 다시 시작', tool + ' 새 세션을 열고 이 넉다운 기록을 자동으로 숨깁니다.');
           if (canControl) {
             html += menuButton('screen', '', '↗', '오류 화면 확인', '마지막 터미널 화면에서 실패 원인을 확인합니다.');
-            html += menuButton('focus', '', '⌘', '실제 터미널 열기', '남아 있는 터미널 창을 앞으로 가져옵니다.');
+            html += menuButton('focus', '', '⌘', '실제 터미널로 전환', '남아 있는 터미널 창을 앞으로 가져옵니다.');
           }
           html += menuButton('stash', '', '−', '실패 기록 숨기기', '새 세션을 열지 않고 넉다운 기록만 지도에서 치웁니다.');
-        } else if (a.state === 'needs_input' && canControl) {
+        } else if (need && canControl) {
           html += menuButton('screen', 'primary', '!', '요청 내용 확인하고 답하기', '현재 화면을 읽은 뒤 Y/N, 번호 선택 또는 직접 메시지를 보냅니다.');
           html += menuButton('focus', '', '⌘', '판단이 어려우면 실제 터미널', '파일 삭제·권한 변경처럼 민감한 요청은 터미널에서 자세히 확인합니다.');
           html += menuButton('stash', '', '−', '잠시 지도에서 숨기기', '세션은 종료하지 않고 지도에서만 치웁니다.');
           html += menuButton('kill', 'danger', '×', '작업을 취소하고 종료', '더 진행하면 안 되는 세션일 때만 종료합니다.');
-        } else if (a.state === 'needs_input') {
+        } else if (need) {
           html += menuButton('retry', 'primary', '+', '같은 프로젝트에서 새 세션 시작', tool + '를 같은 작업 폴더에서 새로 열고, 연결할 수 없는 기존 기록은 숨깁니다.');
           html += menuButton('stash', '', '−', '기존 기록만 숨기기', '새 세션을 열지 않고 제어할 수 없는 기록만 지도에서 치웁니다.');
         } else if (canControl) {
           html += menuButton('screen', 'primary', '↗', '대화창에서 보기', '터미널 화면을 읽고, 답변/선택지를 웹에서 보냅니다.');
-          html += menuButton('focus', '', '⌘', '실제 터미널 앞으로', 'macOS 터미널 창을 직접 확인해야 할 때만 씁니다.');
+          html += menuButton('focus', '', '⌘', '실제 터미널로 전환', '현재 세션이 실행 중인 macOS 터미널 창을 앞으로 가져옵니다.');
           html += menuButton('enter', '', '↵', 'Enter만 보내기', '입력 없이 Enter를 보냅니다. 멈춘 프롬프트를 넘길 때 사용합니다.');
           html += menuButton('stash', '', '−', stashedIds.has(a.id) ? '지도에 다시 표시' : '지도에서 숨기기', '세션은 끄지 않고 화면에서만 치웁니다.');
           html += menuButton('kill', 'danger', '×', '세션 종료', '실행 중인 프로세스를 종료합니다. 필요 없을 때만 누르세요.');
         } else {
-          html += menuButton('terminal', 'primary', '+', '새 터미널 열기', '이 프로젝트 위치에서 새 Claude/Codex 세션을 시작합니다.');
+          html += menuButton('terminal', 'primary', '+', '새 세션 시작', '이 프로젝트 위치에서 새 Claude/Codex 터미널 세션을 시작합니다.');
           html += menuButton('stash', '', '−', stashedIds.has(a.id) ? '지도에 다시 표시' : '지도에서 숨기기', 'pid가 없는 기록을 화면에서 치웁니다.');
         }
         html += '</div>';
@@ -4988,55 +5895,92 @@
       function openControlPanel(a) {
         rememberFocus();
         controlPanelFor = a;
+        controlPanelTab = 'activity';
+        controlPendingAction = null;
+        controlPendingSignature = '';
+        controlMultiSelections.clear();
         const cls = CLASSES[classKeyOf(a)] || CLASSES.mage;
-        const state = stateLabel(a.state);
+        const state = stateLabel(effectiveState(a));
         const project = groupName(a.project);
+        const branch = a.branch || (a.pr ? 'PR ' + a.pr : '정보 없음');
         controlPanelEl.innerHTML =
-          '<div class="cp-head"><span>' + esc(agentDisplayName(a).slice(0, 34)) + '<span class="cp-subhead">' + esc(toolLabel(a)) + ' · ' + esc(state) + ' · ' + esc(project) + ' · ' + esc(cls.name) + '</span></span><button data-cp="close">닫기</button></div>' +
-          '<div class="cp-section">' +
-          '<div class="cp-label">먼저 볼 것</div>' +
-          '<div class="cp-help">현재 터미널 화면을 읽고, 필요한 답변을 이 패널에서 바로 보냅니다.</div>' +
-          '<div class="cp-actions"><button class="primary" data-cp="refresh">화면 다시 읽기</button><button data-cp="focus">실제 터미널 앞으로</button></div>' +
+          '<div class="cp-head">' +
+          '<div class="cp-head-main"><span class="cp-head-title">' + esc(sessionDisplayTitle(a).slice(0, 58)) + '</span><span id="controlSubhead" class="cp-subhead">' + esc(toolLabel(a)) + ' · ' + esc(state) + ' · ' + esc(project) + ' · ' + esc(cls.name) + '</span></div>' +
+          '<div class="cp-head-actions"><span id="controlLive" class="cp-live loading">연결 확인 중</span><button data-cp="close" aria-label="워크스페이스 닫기">닫기</button></div>' +
           '</div>' +
-          '<div class="cp-section">' +
-          '<div class="cp-label">자주 누르는 답변</div>' +
-          '<div class="cp-help">권한 확인이나 선택 질문이 보일 때 쓰는 버튼입니다.</div>' +
-          '<div class="cp-actions">' +
-          '<button class="primary" data-cp-text="y">Y 허용</button>' +
-          '<button class="warn" data-cp-text="n">N 거절</button>' +
-          '<button class="primary" data-cp-text="a">A 항상 허용</button>' +
-          '<button data-cp-text="c">C 계속</button>' +
-          '<button data-cp="enter">빈 응답</button>' +
-          '<button data-cp="esc">취소</button>' +
-          '</div>' +
-          '</div>' +
-          '<div class="cp-section">' +
-          '<div class="cp-label">번호/커서 선택</div>' +
-          '<div class="cp-help">터미널에 1, 2, 3 같은 선택지가 보일 때 사용합니다.</div>' +
-          '<div class="cp-actions">' +
-          '<button data-cp-text="1">1</button><button data-cp-text="2">2</button><button data-cp-text="3">3</button><button data-cp-text="4">4</button>' +
-          '<button data-cp-key="up">위</button><button data-cp-key="down">아래</button><button data-cp-key="tab">Tab</button>' +
-          '</div>' +
-          '</div>' +
-          '<div class="cp-section">' +
-          '<div class="cp-label">직접 메시지 보내기</div>' +
-          '<textarea id="controlInput" placeholder="이 세션에 보낼 메시지"></textarea>' +
-          '<div class="cp-actions"><button class="primary" data-cp="send">메시지 보내기</button></div>' +
-          '</div>' +
-          '<div class="cp-section">' +
-          '<div class="cp-label">현재 화면 요약</div>' +
-          '<div id="controlSummary" class="cp-summary">읽는 중...</div>' +
-          '<div class="cp-terminal-tools"><span>터미널 원문은 줄별로 보기 좋게 정리해서 표시합니다</span><button class="cp-raw-toggle" data-cp="toggle-raw">원문 보기</button></div>' +
-          '<div id="controlScreen" class="cp-terminal" style="display:none">읽는 중...</div>' +
+          '<div id="controlPending" class="cp-pending" role="status" aria-live="polite"></div>' +
+          '<div class="cp-workspace">' +
+          '<aside class="cp-context" aria-label="세션 정보">' +
+          '<div class="cp-context-row"><span>상태</span><b id="controlState">' + esc(state) + '</b></div>' +
+          '<div class="cp-context-row"><span>시작 요청</span><b>' + esc(agentDisplayName(a).slice(0, 120)) + '</b></div>' +
+          '<div class="cp-context-row"><span>프로젝트</span><b>' + esc(a.project || '경로 없음') + '</b></div>' +
+          '<div class="cp-context-row"><span>브랜치</span><b>' + esc(String(branch)) + '</b></div>' +
+          '<div class="cp-context-row"><span>세션</span><b>' + esc(toolLabel(a)) + ' · ' + esc(terminalAppLabel(a)) + ' · PID ' + esc(String(a.pid || '없음')) + '</b></div>' +
+          '<div class="cp-context-row"><span>컨텍스트</span><b id="controlContextUsage">' + esc(tokenUsageLabel(a)) + '</b><small>사용량 정보가 없어도 아래 정리·압축 기능은 실행할 수 있습니다.</small></div>' +
+          '<div class="cp-context-actions"><button class="warn" data-cp="summarize-context" data-context-action>컨텍스트 정리 요청</button><button class="primary" data-cp="compact-context" data-context-action>컨텍스트 압축 실행</button><button data-cp="refresh">화면 다시 읽기</button><button data-cp="focus">실제 터미널로 전환</button><button class="danger" data-cp="kill">세션 종료</button></div>' +
+          '</aside>' +
+          '<main class="cp-main">' +
+          '<nav class="cp-tabs" aria-label="세션 보기">' +
+          '<button class="active" data-cp-tab="activity">세션 요약</button>' +
+          '<button data-cp-tab="terminal">터미널 원문</button>' +
+          '<button data-cp-tab="respond">답변 보내기</button>' +
+          '</nav>' +
+          '<section class="cp-view active" data-cp-view="activity"><div class="cp-overview-head"><div class="cp-overview-copy"><b>이 세션에서 바로 할 일</b><span>현재 화면을 요약해서 보고, 필요하면 ' + esc(toolLabel(a)) + '가 맥락을 정리하거나 직접 압축하게 할 수 있습니다.</span></div><div class="cp-quick-actions"><button data-cp="refresh">요약 새로고침</button><button class="warn" data-cp="summarize-context" data-context-action>컨텍스트 정리</button><button class="primary" data-cp="compact-context" data-context-action>컨텍스트 압축</button></div></div><div class="cp-label">현재 요약</div><div id="controlSnapshot" class="cp-snapshot-grid"><div class="cp-snapshot-card wide"><span>상태</span><b>터미널 화면을 읽는 중...</b></div></div><div class="cp-label">최근 진행 내역</div><div id="controlSummary" class="cp-summary"><div class="cp-line">읽는 중...</div></div></section>' +
+          '<section class="cp-view" data-cp-view="terminal"><div id="controlScreen" class="cp-terminal"><div class="term-line"><span class="term-no">...</span><span class="term-text">읽는 중...</span></div></div></section>' +
+          '<section class="cp-view" data-cp-view="respond"><div class="cp-composer"><div id="controlResponseContext" class="cp-response-context empty"><span>현재 질문</span><b>터미널 화면에서 질문을 확인하고 있습니다.</b></div><div class="cp-label">선택지</div><div id="controlChoices" class="cp-choice-grid"><button data-cp="enter">Enter</button><button data-cp="esc">터미널 Esc</button></div><div class="cp-label">직접 답변 초안</div><textarea id="controlInput" placeholder="전송 전에는 자유롭게 수정할 수 있습니다"></textarea><p class="cp-send-note">초안은 전송 전까지 수정하거나 지울 수 있습니다. 터미널로 전송한 뒤에는 취소할 수 없습니다.</p><div class="cp-actions"><button data-cp="clear-draft">초안 지우기</button><button class="primary" data-cp="send">확인 후 전송</button></div><div id="controlSendStatus" class="cp-send-status" role="status" aria-live="polite"></div></div></section>' +
+          '</main>' +
           '</div>';
-        controlPanelEl.style.display = 'block';
+        controlPanelEl.style.display = 'flex';
+        updateControlPanelState(a);
+        clearInterval(controlRefreshTimer);
+        controlRefreshTimer = setInterval(() => {
+          if (controlPanelFor?.id === a.id && document.visibilityState === 'visible') readAgentScreen(a, true);
+        }, 2000);
         focusFirstButton(controlPanelEl);
       }
+      function updateControlPanelState(a) {
+        if (controlPanelFor?.id !== a?.id) return;
+        const current = agents.find((agent) => agent.id === a.id) || a;
+        const state = stateLabel(effectiveState(current));
+        const cls = CLASSES[classKeyOf(current)] || CLASSES.mage;
+        const stateEl = document.getElementById('controlState');
+        const subhead = document.getElementById('controlSubhead');
+        const contextUsage = document.getElementById('controlContextUsage');
+        if (stateEl) stateEl.textContent = state;
+        if (subhead) subhead.textContent = toolLabel(current) + ' · ' + state + ' · ' + groupName(current.project) + ' · ' + cls.name;
+        if (contextUsage) contextUsage.textContent = tokenUsageLabel(current);
+        const blocked = needsResponse(current);
+        for (const button of controlPanelEl.querySelectorAll('[data-context-action]')) {
+          button.disabled = blocked;
+          button.title = blocked ? '먼저 현재 응답 대기를 처리해주세요.' : '';
+        }
+      }
       function closeControlPanel() {
-        const wasOpen = controlPanelEl.style.display === 'block';
+        const wasOpen = controlPanelEl.style.display === 'flex';
+        clearInterval(controlRefreshTimer);
+        controlRefreshTimer = null;
         controlPanelFor = null;
+        controlPendingAction = null;
+        controlPendingSignature = '';
+        controlMultiSelections.clear();
         controlPanelEl.style.display = 'none';
         if (wasOpen) restoreFocus();
+      }
+      function setControlPanelTab(tab) {
+        if (!['activity', 'terminal', 'respond'].includes(tab)) return;
+        controlPanelTab = tab;
+        for (const button of controlPanelEl.querySelectorAll('[data-cp-tab]')) {
+          button.classList.toggle('active', button.dataset.cpTab === tab);
+        }
+        for (const view of controlPanelEl.querySelectorAll('[data-cp-view]')) {
+          view.classList.toggle('active', view.dataset.cpView === tab);
+        }
+        if (tab === 'terminal') {
+          requestAnimationFrame(() => {
+            const view = controlPanelEl.querySelector('[data-cp-view="terminal"]');
+            if (view) view.scrollTop = view.scrollHeight;
+          });
+        }
       }
       function openMemberPicker(list, clientX, clientY) {
         rememberFocus();
@@ -5046,7 +5990,7 @@
         list.forEach((m, i) => {
           const a = m.a;
           const cls = CLASSES[classKeyOf(a)] || CLASSES.mage;
-          html += '<button data-pick="' + i + '"><span class="sw" style="background:' + cls.main + '"></span>' + m.no + '. ' + esc(agentDisplayName(a).slice(0, 18)) + '</button>';
+          html += '<button data-pick="' + i + '"><span class="sw" style="background:' + cls.main + '"></span>' + m.no + '. ' + esc(sessionDisplayTitle(a).slice(0, 24)) + '</button>';
         });
         jm.innerHTML = html;
         jm.style.display = 'block';
@@ -5067,13 +6011,13 @@
           if (action === 'retry') {
             closeJobMenu();
             openTerminalSession(
-              { cwd: a.project || '', name: agentDisplayName(a) },
+              { cwd: a.project || '', name: sessionBaseTitle(a) },
               teamOf(a) === 'codex' ? 'codex' : 'claude',
               a,
             );
           } else if (action === 'terminal') {
             closeJobMenu();
-            openTerminalSession({ cwd: a.project || '', name: agentDisplayName(a) }, a.kind === 'codex' ? 'codex' : 'claude');
+            openTerminalSession({ cwd: a.project || '', name: sessionBaseTitle(a) }, a.kind === 'codex' ? 'codex' : 'claude');
           } else if (action === 'screen') {
             openControlPanel(a);
             readAgentScreen(a);
@@ -5110,9 +6054,21 @@
       });
 
       controlPanelEl.addEventListener('click', (e) => {
+        const tabBtn = e.target.closest('button[data-cp-tab]');
+        if (tabBtn) {
+          setControlPanelTab(tabBtn.dataset.cpTab);
+          return;
+        }
         const textBtn = e.target.closest('button[data-cp-text]');
         if (textBtn && controlPanelFor) {
-          sendAgentInput(controlPanelFor, textBtn.dataset.cpText, true);
+          confirmAndSendControlResponse(controlPanelFor, textBtn.dataset.cpText);
+          return;
+        }
+        const choiceBtn = e.target.closest('button[data-cp-choice]');
+        if (choiceBtn && controlPanelFor) {
+          const choiceIndex = Number(choiceBtn.dataset.cpChoice);
+          if (controlPendingAction?.multiSelect) toggleMultiChoice(controlPanelFor, choiceIndex);
+          else chooseAgentOption(controlPanelFor, choiceIndex);
           return;
         }
         const keyBtn = e.target.closest('button[data-cp-key]');
@@ -5124,25 +6080,37 @@
         if (!action || !controlPanelFor) return;
         const a = controlPanelFor;
         if (action === 'close') closeControlPanel();
-        else if (action === 'refresh') readAgentScreen(a);
+        else if (action === 'refresh') readAgentScreen(a, false, true);
         else if (action === 'focus') focusAgent(a);
-        else if (action === 'enter') sendAgentInput(a, '', true);
+        else if (action === 'kill') killAgent(a);
+        else if (action === 'summarize-context') runContextAction(a, 'summarize');
+        else if (action === 'compact-context') runContextAction(a, 'compact');
+        else if (action === 'submit-multi') submitMultiChoices(a);
+        else if (action === 'enter') confirmAndSendControlResponse(a, '');
         else if (action === 'yes') sendAgentInput(a, 'y', true);
         else if (action === 'no') sendAgentInput(a, 'n', true);
         else if (action === 'esc') sendAgentKey(a, 'esc');
-        else if (action === 'toggle-raw') {
-          const raw = document.getElementById('controlScreen');
-          const btn = e.target.closest('button[data-cp]');
-          if (raw) {
-            const next = raw.style.display === 'none';
-            raw.style.display = next ? 'block' : 'none';
-            if (btn) btn.textContent = next ? '원문 숨기기' : '원문 보기';
+        else if (action === 'clear-draft') {
+          const input = document.getElementById('controlInput');
+          if (input) {
+            input.value = '';
+            input.focus();
           }
+          const status = document.getElementById('controlSendStatus');
+          if (status) status.textContent = '초안을 지웠습니다.';
         }
         else if (action === 'send') {
           const input = document.getElementById('controlInput');
-          sendAgentInput(a, input ? input.value : '', true);
-          if (input) input.value = '';
+          confirmAndSendControlResponse(a, input ? input.value : '');
+        }
+      });
+      controlPanelEl.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
+      controlPanelEl.addEventListener('keydown', (e) => {
+        if (e.target?.id !== 'controlInput' || e.key !== 'Enter' || (!e.metaKey && !e.ctrlKey)) return;
+        e.preventDefault();
+        const input = e.target;
+        if (controlPanelFor && input.value.trim()) {
+          confirmAndSendControlResponse(controlPanelFor, input.value);
         }
       });
       sessionPanelEl.addEventListener('click', (e) => {
@@ -5165,30 +6133,43 @@
           return;
         }
         const btn = e.target.closest('button[data-sp]');
-        if (!btn) return;
-        const id = btn.dataset.id;
+        const item = e.target.closest('.sp-item[data-id]');
+        if (!btn && !item) return;
+        const id = btn?.dataset.id || item?.dataset.id;
+        const a = agents.find((x) => x.id === id);
         const m = members.find((x) => x.a.id === id);
-        if (!m) return;
+        if (!a) return;
+        if (!btn) {
+          if (Number.isFinite(Number(a.pid))) {
+            openControlPanel(a);
+            readAgentScreen(a);
+          } else if (m) {
+            openJobMenu(m, Math.max(12, mouse.x), Math.max(70, mouse.y));
+          }
+          return;
+        }
         const action = btn.dataset.sp;
         if (action === 'screen') {
-          openControlPanel(m.a);
-          readAgentScreen(m.a);
+          openControlPanel(a);
+          readAgentScreen(a);
+        } else if (action === 'focus') {
+          focusAgent(a);
         } else if (action === 'enter') {
-          sendAgentInput(m.a, '', true);
-        } else if (action === 'focus-map') {
+          sendAgentInput(a, '', true);
+        } else if (action === 'focus-map' && m) {
           const pos = separatedMemberPositions(latestT).get(m) || { x: m.x, y: m.y };
           scrollY = Math.max(0, Math.min(Math.max(0, contentH - window.innerHeight + 40), pos.y - window.innerHeight * 0.46));
           mouse.x = pos.x;
           mouse.y = pos.y - scrollY;
           burst(pos.x, pos.y - 38, stateColor(m.a), '여기!');
           openJobMenu(m, Math.max(12, Math.min(window.innerWidth - 24, pos.x + 42)), Math.max(70, pos.y - scrollY - 40));
-          toast(agentDisplayName(m.a).slice(0, 36) + ' 위치를 찾았어요');
+          toast(sessionDisplayTitle(m.a).slice(0, 42) + ' 위치를 찾았어요');
         } else if (action === 'stash') {
-          stashedIds.add(m.a.id);
+          stashedIds.add(a.id);
           layout();
           toast('실패 세션을 막사로 숨겼어요');
         } else if (action === 'kill') {
-          killAgent(m.a);
+          killAgent(a);
         }
       });
       sessionPanelEl.addEventListener('input', (e) => {
@@ -5226,7 +6207,75 @@
         try {
           const r = await apiPost('/api/input', { pid, text, enter });
           toast(r.ok ? '입력을 보냈어요' : r.message || '입력 전송 실패');
+          if (r.ok && controlPanelFor?.id === a.id) setTimeout(() => readAgentScreen(a, true, true), 450);
         } catch (err) {
+          toast('입력 전송 실패: ' + (err && err.message ? err.message : '연결 확인 필요'));
+        }
+      }
+      async function runContextAction(a, mode) {
+        if (needsResponse(a)) {
+          setControlPanelTab('respond');
+          return toast('먼저 현재 응답 대기를 처리해주세요');
+        }
+        const pid = pidOf(a);
+        if (pid == null) return toast('이 세션은 웹 입력을 보낼 PID가 없어요');
+        const isCompact = mode === 'compact';
+        const agentLabel = toolLabel(a);
+        const text = isCompact
+          ? '/compact'
+          : '현재 작업을 이어갈 수 있도록 지금까지의 목표, 완료한 작업, 변경 파일, 검증 결과, 남은 일과 주의사항을 짧고 구조적으로 정리해줘. 새 작업은 시작하지 마.';
+        const approved = await confirmResponseSend({
+          title: isCompact ? agentLabel + ' 컨텍스트를 압축할까요?' : agentLabel + '에게 컨텍스트 정리를 요청할까요?',
+          preview: text,
+          submitLabel: isCompact ? '압축 실행' : '정리 요청',
+        });
+        if (!approved) return;
+        const live = document.getElementById('controlLive');
+        if (live) {
+          live.className = 'cp-live loading';
+          live.textContent = isCompact ? '압축 요청 중' : '정리 요청 중';
+        }
+        try {
+          const r = await apiPost('/api/input', { pid, text, enter: true });
+          if (!r.ok) throw new Error(r.message || '입력 전송 실패');
+          terminalScreenCache.delete(pid);
+          toast(isCompact ? '컨텍스트 압축을 요청했어요' : '컨텍스트 정리를 요청했어요');
+          setTimeout(() => {
+            if (controlPanelFor?.id === a.id) readAgentScreen(a, true, true);
+          }, 650);
+        } catch (err) {
+          if (live) {
+            live.className = 'cp-live error';
+            live.textContent = '요청 실패';
+          }
+          toast('요청 실패: ' + (err && err.message ? err.message : '연결 확인 필요'));
+        }
+      }
+      async function confirmAndSendControlResponse(a, text) {
+        const value = String(text || '');
+        const preview = value ? value.slice(0, 600) : 'Enter 키';
+        if (!(await confirmResponseSend({ preview, submitLabel: '응답 보내기' }))) return;
+        const status = document.getElementById('controlSendStatus');
+        if (status) status.textContent = '전송 중...';
+        const pid = pidOf(a);
+        if (pid == null) {
+          if (status) status.textContent = '전송 실패: PID가 없습니다.';
+          return toast('이 세션은 웹 입력을 보낼 pid가 없어요');
+        }
+        try {
+          const r = await apiPost('/api/input', { pid, text: value, enter: true });
+          if (!r.ok) throw new Error(r.message || '입력 전송 실패');
+          const input = document.getElementById('controlInput');
+          if (input && input.value === value) input.value = '';
+          if (status) status.textContent = '전송 완료 · 이제 이 응답은 취소할 수 없습니다.';
+          terminalNeedsInput.set(pid, false);
+          layout();
+          toast('응답을 전송했어요');
+          setTimeout(() => {
+            if (controlPanelFor?.id === a.id) readAgentScreen(a, true, true);
+          }, 450);
+        } catch (err) {
+          if (status) status.textContent = '전송 실패 · 초안은 그대로 남아 있습니다.';
           toast('입력 전송 실패: ' + (err && err.message ? err.message : '연결 확인 필요'));
         }
       }
@@ -5236,14 +6285,114 @@
         try {
           const r = await apiPost('/api/input', { pid, key });
           toast(r.ok ? '키를 보냈어요' : r.message || '키 전송 실패');
+          if (r.ok && controlPanelFor?.id === a.id) setTimeout(() => readAgentScreen(a, true, true), 450);
         } catch (err) {
           toast('키 전송 실패: ' + (err && err.message ? err.message : '연결 확인 필요'));
+        }
+      }
+      function toggleMultiChoice(a, choiceIndex) {
+        const action = controlPendingAction;
+        const choice = action?.options?.[choiceIndex];
+        if (!choice) return toast('선택지를 다시 읽어주세요');
+        if (!choice.checkable) return chooseAgentOption(a, choiceIndex);
+        if (controlMultiSelections.has(choiceIndex)) controlMultiSelections.delete(choiceIndex);
+        else controlMultiSelections.add(choiceIndex);
+        renderControlPending(action);
+        const count = controlMultiSelections.size;
+        toast(count ? count + '개 선택됨 · 선택 완료를 눌러주세요' : '선택이 해제됐어요');
+      }
+      async function submitMultiChoices(a) {
+        const action = controlPendingAction;
+        if (!action?.multiSelect) return;
+        const selectedIndexes = [...controlMultiSelections].sort((x, y) => x - y);
+        if (!selectedIndexes.length) return toast('먼저 하나 이상 체크해주세요');
+        const preview = selectedIndexes
+          .map((index) => action.options[index])
+          .filter(Boolean)
+          .map((option) => '✓ ' + option.value + '. ' + optionDisplayLabel(option))
+          .join('\n');
+        if (!(await confirmResponseSend({
+          title: '체크한 항목들을 보낼까요?',
+          preview,
+          submitLabel: selectedIndexes.length + '개 선택 보내기',
+        }))) return;
+        const pid = pidOf(a);
+        if (pid == null) return toast('이 세션은 웹 입력을 보낼 pid가 없어요');
+        const status = document.getElementById('controlSendStatus');
+        if (status) status.textContent = '체크 항목을 터미널에 반영하는 중...';
+        try {
+          let cursor = Math.max(0, action.options.findIndex((option) => option.selected));
+          for (let index = 0; index < action.options.length; index += 1) {
+            const option = action.options[index];
+            if (!option.checkable || option.checked === controlMultiSelections.has(index)) continue;
+            const delta = index - cursor;
+            const key = delta < 0 ? 'up' : 'down';
+            for (let step = 0; step < Math.abs(delta); step += 1) {
+              const moved = await apiPost('/api/input', { pid, key });
+              if (!moved.ok) throw new Error(moved.message || '선택지 이동 실패');
+            }
+            const checked = await apiPost('/api/input', { pid, key: 'space' });
+            if (!checked.ok) throw new Error(checked.message || '체크 실패');
+            cursor = index;
+          }
+          const submitted = await apiPost('/api/input', { pid, key: 'enter' });
+          if (!submitted.ok) throw new Error(submitted.message || '선택 전송 실패');
+          terminalNeedsInput.set(pid, false);
+          controlPendingAction = null;
+          controlPendingSignature = '';
+          controlMultiSelections.clear();
+          if (status) status.textContent = '체크 선택 전송 완료';
+          toast('체크한 선택지를 전송했어요');
+          setTimeout(() => {
+            if (controlPanelFor?.id === a.id) readAgentScreen(a, true, true);
+          }, 500);
+        } catch (err) {
+          if (status) status.textContent = '선택 전송 실패 · 터미널 화면을 다시 확인해주세요.';
+          toast('선택 전송 실패: ' + (err && err.message ? err.message : '연결 확인 필요'));
+          setTimeout(() => {
+            if (controlPanelFor?.id === a.id) readAgentScreen(a, true, true);
+          }, 300);
+        }
+      }
+      async function chooseAgentOption(a, choiceIndex) {
+        const action = controlPendingAction;
+        const choice = action?.options?.[choiceIndex];
+        if (!choice) return toast('선택지를 다시 읽어주세요');
+        const pid = pidOf(a);
+        if (pid == null) return toast('이 세션은 웹 입력을 보낼 pid가 없어요');
+        if (!(await confirmResponseSend({
+          title: '이 선택지를 보낼까요?',
+          preview: `${choice.value}. ${optionDisplayLabel(choice)}`,
+          submitLabel: '선택 보내기',
+        }))) return;
+        const status = document.getElementById('controlSendStatus');
+        if (status) status.textContent = '선택지를 전송 중...';
+        try {
+          const selectedIndex = Math.max(0, action.options.findIndex((option) => option.selected));
+          const delta = choiceIndex - selectedIndex;
+          const key = delta < 0 ? 'up' : 'down';
+          for (let i = 0; i < Math.abs(delta); i += 1) {
+            const moved = await apiPost('/api/input', { pid, key });
+            if (!moved.ok) throw new Error(moved.message || '선택지 이동 실패');
+          }
+          const submitted = await apiPost('/api/input', { pid, key: 'enter' });
+          if (!submitted.ok) throw new Error(submitted.message || '선택 전송 실패');
+          terminalNeedsInput.set(pid, false);
+          controlPendingAction = null;
+          if (status) status.textContent = '선택 전송 완료';
+          toast('선택지를 전송했어요');
+          setTimeout(() => {
+            if (controlPanelFor?.id === a.id) readAgentScreen(a, true, true);
+          }, 450);
+        } catch (err) {
+          if (status) status.textContent = '선택 전송 실패';
+          toast('선택 전송 실패: ' + (err && err.message ? err.message : '연결 확인 필요'));
         }
       }
       async function killAgent(a) {
         const pid = pidOf(a);
         if (pid == null) return toast('종료할 pid가 없어요');
-        if (!window.confirm('이 세션을 종료할까요?\\n' + agentDisplayName(a))) return;
+        if (!window.confirm('이 세션을 종료할까요?\\n' + sessionDisplayTitle(a))) return;
         try {
           const r = await apiPost('/api/kill', { pid });
           if (r.ok) {
@@ -5256,6 +6405,163 @@
         } catch (err) {
           toast('세션 종료 실패: ' + (err && err.message ? err.message : '연결 확인 필요'));
         }
+      }
+      function pendingActionFromScreen(text, a) {
+        const rawLines = String(text || '')
+          .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
+          .split('\n')
+          // 터미널 화면이 길거나 선택지 설명이 여러 줄이어도 질문 묶음을 놓치지 않는다.
+          .slice(-160);
+        const lines = rawLines.map((line) => line.trim()).filter(Boolean);
+        const strongPrompt = /(?:\[y\/n\]|\(y\/n\)|would you like to|do you want to|press enter to confirm|enter to select|허용하시겠습니까|승인하시겠습니까|계속하시겠습니까|실행할까요|선택하세요)/i;
+        const ignoredUi = /(?:tab to queue message|context left|new task\?|\/clear|disable recaps|※ recap:|accept edits on|explain this codebase|jump to bottom)/i;
+        const hasStrongPrompt = lines.some((line) => !ignoredUi.test(line) && strongPrompt.test(line));
+        const optionGroups = [];
+        let optionLines = [];
+        let currentOption = null;
+        for (const rawLine of rawLines) {
+          const line = rawLine.trim();
+          if (!line) continue;
+          const match = line.match(/^([❯›>]?)[\s│┃┆┊╎╏]*([1-9])(?:[.)]|\s+-)\s+(.{1,180})$/i);
+          if (match) {
+            if (match[2] === '1' && optionLines.length) {
+              optionGroups.push(optionLines);
+              optionLines = [];
+            }
+            currentOption = { value: match[2], label: match[3], selected: Boolean(match[1]) };
+            optionLines.push(currentOption);
+            continue;
+          }
+          if (/^(?:Reason:|\$\s|Press enter|Esc to cancel)/i.test(line) || strongPrompt.test(line)) {
+            currentOption = null;
+            continue;
+          }
+          const continuation = /^\s{2,}/.test(rawLine) && !/^(?:Reason:|\$\s|Press enter|Esc to cancel)/i.test(line);
+          if (currentOption && continuation && !strongPrompt.test(line) && !ignoredUi.test(line)) {
+            currentOption.label += ' ' + line;
+          }
+        }
+        if (optionLines.length) optionGroups.push(optionLines);
+        optionLines = (optionGroups.at(-1) || []).map((option) => {
+          const normalized = option.label.replace(/\s+/g, ' ').trim();
+          const checkbox = normalized.match(/^\[([ xX✓✔])\]\s*/);
+          const cleanLabel = checkbox ? normalized.slice(checkbox[0].length) : normalized;
+          const isUtilityOption = /^(?:Type something(?:\s+Submit)?|Chat about this)$/i.test(cleanLabel);
+          return {
+            ...option,
+            label: cleanLabel,
+            checkable: Boolean(checkbox) && !isUtilityOption,
+            checked: Boolean(checkbox && !isUtilityOption && !/^\s$/.test(checkbox[1])),
+          };
+        });
+        const hasChoiceMenu = optionLines.length >= 2;
+        if ((!hasStrongPrompt && !hasChoiceMenu) || !screenNeedsResponse(text)) return null;
+        const reason = [...lines].reverse().find((line) => /^Reason:\s*/i.test(line));
+        const explicitQuestion = [...lines]
+          .reverse()
+          .find((line) =>
+            !/^[❯›>]?\s*[1-9][.)]\s+/.test(line) &&
+            !/^Press enter|Esc to cancel/i.test(line) &&
+            !/^Reason:/i.test(line) &&
+            /[?？]$/.test(line),
+          );
+        const promptQuestion = [...lines]
+          .reverse()
+          .find((line) => !/^Press enter|Esc to cancel/i.test(line) && !/^[❯›>]?\s*[1-9][.)]\s+/.test(line) && strongPrompt.test(line));
+        const question = reason ? reason.replace(/^Reason:\s*/i, '') : explicitQuestion || promptQuestion;
+        let command = '';
+        const commandIndex = rawLines.findLastIndex((line) => /^\s*\$\s+/.test(line));
+        if (commandIndex >= 0) {
+          command = rawLines[commandIndex].trim().replace(/^\$\s+/, '');
+          for (let i = commandIndex + 1; i < rawLines.length; i += 1) {
+            const rawLine = rawLines[i];
+            const line = rawLine.trim();
+            if (!line) continue;
+            if (!/^\s{2,}/.test(rawLine) || /^(?:Reason:|Press enter|Esc to cancel|[❯›>]?\s*[1-9][.)]\s+)/i.test(line)) break;
+            command += ' ' + line;
+          }
+          command = command.replace(/\s+/g, ' ').trim();
+        }
+        return {
+          question: (question || '응답이 필요한 세션입니다. 터미널 내용을 확인한 뒤 답해주세요.').slice(0, 280),
+          command: command.slice(0, 520),
+          options: optionLines.slice(-6),
+          multiSelect: optionLines.filter((option) => option.checkable).length >= 2,
+          yesNo: lines.some((line) => /\[y\/n\]|\(y\/n\)|allow|approve|deny|허용|승인|거절/i.test(line)),
+        };
+      }
+      function optionDisplayLabel(option) {
+        const label = String(option?.label || '');
+        if (/^yes, proceed/i.test(label)) return '이번 실행 허용';
+        if (/^yes, and (?:don['’]t|do not) ask again/i.test(label)) return '실행 허용 · 같은 명령은 다시 묻지 않기';
+        if (/^no, and tell codex/i.test(label)) return '실행 거절 · Codex에 다른 방법 지시';
+        return label;
+      }
+      function renderControlPending(action) {
+        const pending = document.getElementById('controlPending');
+        const choices = document.getElementById('controlChoices');
+        const responseContext = document.getElementById('controlResponseContext');
+        if (!pending || !choices || !responseContext) return;
+        controlPendingAction = action;
+        if (!action) {
+          controlPendingSignature = '';
+          controlMultiSelections.clear();
+          pending.classList.remove('open');
+          pending.innerHTML = '';
+          responseContext.className = 'cp-response-context empty';
+          responseContext.innerHTML = '<span>현재 질문</span><b>지금 감지된 질문이 없습니다.</b>';
+          choices.innerHTML =
+            '<button data-cp="enter">Enter</button><button data-cp="esc">터미널 Esc</button>' +
+            '<button data-cp-key="up">위</button><button data-cp-key="down">아래</button>';
+          return;
+        }
+        const signature = action.question + '|' + action.options.map((option) => option.value + ':' + option.label).join('|');
+        if (signature !== controlPendingSignature) {
+          controlPendingSignature = signature;
+          controlMultiSelections = new Set(
+            action.options.map((option, index) => option.checked ? index : -1).filter((index) => index >= 0),
+          );
+        }
+        responseContext.className = 'cp-response-context';
+        responseContext.innerHTML =
+          '<span>무엇을 묻는지</span><b>' + esc(action.question) + '</b>' +
+          (action.multiSelect ? '<span style="margin-top:10px">체크형 질문</span><b>여러 항목을 누른 뒤 ‘선택 완료’를 눌러주세요.</b>' : '') +
+          (action.command ? '<span style="margin-top:10px">실행 예정 명령</span><b>' + esc(action.command) + '</b>' : '');
+        let actions = '';
+        if (action.options.length) {
+          actions = action.options
+            .map((option, index) => {
+              if (!option.checkable) {
+                return '<button data-cp-choice="' + index + '" title="' + esc(option.label) + '">' + esc(option.value + '. ' + optionDisplayLabel(option)) + '</button>';
+              }
+              const checked = controlMultiSelections.has(index);
+              return '<button class="cp-choice-check' + (checked ? ' checked' : '') + '" data-cp-choice="' + index + '" aria-pressed="' + checked + '" title="' + esc(option.label) + '"><span class="cp-checkmark">✓</span><span>' + esc(option.value + '. ' + optionDisplayLabel(option)) + '</span></button>';
+            })
+            .join('');
+          if (action.multiSelect) {
+            actions += '<button class="primary cp-multi-submit" data-cp="submit-multi"' + (controlMultiSelections.size ? '' : ' disabled') + '>선택 완료 (' + controlMultiSelections.size + '개)</button>';
+          }
+        } else if (action.yesNo) {
+          actions = '<button class="primary" data-cp-text="y">허용</button><button class="warn" data-cp-text="n">거절</button>';
+        } else {
+          actions =
+            '<button data-cp-key="up">↑ 위 항목</button>' +
+            '<button data-cp-key="down">↓ 아래 항목</button>' +
+            '<button class="warn" data-cp-key="space">Space 체크/해제</button>' +
+            '<button class="primary" data-cp="enter">현재 항목 선택</button>' +
+            '<button data-cp="esc">Esc 취소</button>' +
+            '<button data-cp-tab="respond">직접 답변</button>' +
+            '<button data-cp-tab="terminal">터미널 원문 확인</button>';
+        }
+        pending.innerHTML =
+          '<div class="cp-pending-label">응답 대기 · 무엇을 묻는지</div>' +
+          '<div class="cp-pending-question">' + esc(action.question) + '</div>' +
+          (!action.options.length && !action.yesNo ? '<div class="cp-help">선택지 문장을 자동으로 나누지 못했습니다. 아래 버튼으로 터미널의 현재 선택 위치를 직접 움직일 수 있습니다.</div>' : '') +
+          (action.command ? '<div class="cp-pending-command"><span>실행 예정 명령</span>' + esc(action.command) + '</div>' : '') +
+          '<div class="cp-actions">' + actions + '</div>';
+        pending.classList.add('open');
+        const genericControls = !action.options.length && !action.yesNo;
+        choices.innerHTML = actions + (action.multiSelect || genericControls ? '' : '<button data-cp="enter">Enter</button>') + (genericControls ? '' : '<button data-cp="esc">터미널 Esc</button>');
       }
       function summarizeScreenText(text) {
         const lines = String(text || '')
@@ -5320,26 +6626,128 @@
           })
           .join('');
       }
-      async function readAgentScreen(a) {
+      function terminalSnapshotData(text, a, via = '') {
+        const lines = String(text || '')
+          .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
+          .split('\n')
+          .map((line) => line.trim().replace(/^[│┃]\s?/, '').replace(/\s?[│┃]$/, '').trim())
+          .filter(Boolean);
+        const noise = /(?:tab to queue message|context left|accept edits on|shift\+tab to cycle|disable recaps|\/model to change|tokens used|press enter to confirm|esc to cancel|^model:|^directory:|^[─━═\-_=]{8,}$)/i;
+        const meaningful = lines.filter((line) => !noise.test(line));
+        const pending = pendingActionFromScreen(text, a);
+        const recentAction = [...meaningful]
+          .reverse()
+          .find((line) => /^(?:[•⏺✻✽]\s*)?(?:Ran|Running|Explored|Edited|Read|Searched|Called|Waited|실행|수정|확인|검색|읽|작성)/i.test(line));
+        const lastOutput = [...meaningful]
+          .reverse()
+          .find((line) => !/^[›❯>]/.test(line) && line !== recentAction && !/^\d+[.)]\s+/.test(line));
+        const status = pending || needsResponse(a)
+          ? '응답 대기'
+          : a?.state === 'working'
+            ? '작업 중'
+            : a?.state === 'done'
+              ? '완료'
+              : a?.state === 'failed'
+                ? '실패/종료'
+                : '입력 대기';
+        return {
+          status,
+          terminal: (via || terminalAppLabel(a)) + ' · PID ' + (a?.pid || '없음'),
+          question: pending?.question || '',
+          command: pending?.command || '',
+          action: (recentAction || '최근 명령 정보 없음').slice(0, 220),
+          output: (lastOutput || a?.lastMessage || '최근 출력 정보 없음').slice(0, 320),
+        };
+      }
+      function renderTerminalSnapshot(text, a, via = '', error = '') {
+        const snapshot = document.getElementById('controlSnapshot');
+        if (!snapshot) return;
+        if (error) {
+          snapshot.innerHTML = '<div class="cp-snapshot-card wide"><span>연결 상태</span><b>' + esc(error) + '</b></div>';
+          return;
+        }
+        const data = terminalSnapshotData(text, a, via);
+        snapshot.innerHTML =
+          '<div class="cp-snapshot-card' + (data.status === '응답 대기' ? ' need' : '') + '"><span>현재 상태</span><b>' + esc(data.status) + '</b></div>' +
+          '<div class="cp-snapshot-card"><span>터미널</span><b>' + esc(data.terminal) + '</b></div>' +
+          (data.question ? '<div class="cp-snapshot-card wide need"><span>감지된 질문</span><b>' + esc(data.question) + '</b></div>' : '') +
+          (data.command ? '<div class="cp-snapshot-card wide"><span>실행 예정 명령</span><b>' + esc(data.command) + '</b></div>' : '') +
+          '<div class="cp-snapshot-card wide"><span>최근 작업</span><b>' + esc(data.action) + '</b></div>' +
+          '<div class="cp-snapshot-card wide"><span>마지막 출력</span><b>' + esc(data.output) + '</b></div>';
+      }
+      async function readAgentScreen(a, silent = false, force = false) {
         const pid = pidOf(a);
         if (pid == null) return toast('이 세션은 읽을 pid가 없어요');
+        const agentId = a.id;
         const box = document.getElementById('controlScreen') || document.getElementById('agentScreen');
         const summary = document.getElementById('controlSummary');
-        if (box) {
+        const live = document.getElementById('controlLive');
+        const terminalView = controlPanelEl.querySelector('[data-cp-view="terminal"]');
+        const keepAtBottom = terminalView ? terminalView.scrollHeight - terminalView.scrollTop - terminalView.clientHeight < 36 : true;
+        const cached = terminalScreenCache.get(pid);
+        if (cached && controlPanelFor?.id === agentId) {
+          updateControlPanelState(a);
+          if (box) box.innerHTML = terminalRawHtml(cached.text);
+          if (summary) summary.innerHTML = summaryHtml(cached.text);
+          renderTerminalSnapshot(cached.text, a, cached.via || '');
+          renderControlPending(pendingActionFromScreen(cached.text, a));
+          if (live) {
+            live.className = 'cp-live';
+            live.textContent = Date.now() - cached.at < 4000 ? '실시간 캐시' : '최근 화면';
+          }
+          if (!force && Date.now() - cached.at < 4000) {
+            if (!silent) toast('최근 화면을 바로 열었어요');
+            return;
+          }
+        }
+        if (controlReadsInFlight.has(pid)) return;
+        controlReadsInFlight.add(pid);
+        if (live) {
+          live.className = 'cp-live loading';
+          live.textContent = '갱신 중';
+        }
+        if (box && !silent && !cached) {
           box.innerHTML = '<div class="term-line"><span class="term-no">...</span><span class="term-text">읽는 중...</span></div>';
         }
-        if (summary) summary.innerHTML = '<div class="cp-line">읽는 중...</div>';
+        if (summary && !silent && !cached) summary.innerHTML = '<div class="cp-line">읽는 중...</div>';
         try {
           const r = await fetch(API + '/api/screen/' + encodeURIComponent(pid));
           const data = await r.json();
           const raw = data.ok ? data.text || data.screen || '(빈 화면)' : data.message || '화면 읽기 실패';
+          if (controlPanelFor?.id !== agentId) return;
+          if (data.ok) {
+            const wasNeeded = needsResponse(a);
+            terminalScreenCache.set(pid, { text: raw, at: Date.now(), via: data?.via || '' });
+            terminalNeedsInput.set(pid, screenNeedsResponse(raw));
+            terminalProbeAt.set(pid, Date.now());
+            updateControlPanelState(a);
+            if (wasNeeded !== needsResponse(a)) layout();
+          }
           if (box) box.innerHTML = data.ok ? terminalRawHtml(raw) : terminalRawHtml(raw);
           if (summary) summary.innerHTML = data.ok ? summaryHtml(raw) : '<div class="cp-line error">' + esc(raw) + '</div>';
-          toast(data.ok ? '현재 화면을 가져왔어요' : data.message || '화면 읽기 실패');
+          renderTerminalSnapshot(raw, a, data?.via || '', data.ok ? '' : raw);
+          renderControlPending(data.ok ? pendingActionFromScreen(raw, a) : null);
+          if (live) {
+            live.className = data.ok ? 'cp-live' : 'cp-live error';
+            live.textContent = data.ok ? '자동 갱신' : '연결 오류';
+          }
+          if (terminalView && (keepAtBottom || controlPanelTab === 'terminal')) {
+            requestAnimationFrame(() => (terminalView.scrollTop = terminalView.scrollHeight));
+          }
+          if (!silent) toast(data.ok ? '현재 화면을 가져왔어요' : data.message || '화면 읽기 실패');
         } catch (err) {
+          if (controlPanelFor?.id !== agentId) return;
           if (box) box.innerHTML = terminalRawHtml('화면 읽기 실패');
           if (summary) summary.innerHTML = '<div class="cp-line error">화면 읽기 실패</div>';
-          toast('화면 읽기 실패: ' + (err && err.message ? err.message : '연결 확인 필요'));
+          renderTerminalSnapshot('', a, '', '화면 읽기 실패');
+          renderControlPending(null);
+          if (live) {
+            live.className = 'cp-live error';
+            live.textContent = '연결 오류';
+          }
+          if (!silent) toast('화면 읽기 실패: ' + (err && err.message ? err.message : '연결 확인 필요'));
+        } finally {
+          controlReadsInFlight.delete(pid);
         }
       }
 
@@ -5354,6 +6762,17 @@
         rememberFocus();
         closeJobMenu();
         sessionmenuFor = b;
+        if (b.kind === 'tower') {
+          sm.innerHTML =
+            '<div class="jm-head">마법탑 · 세션 정리소</div>' +
+            '<button data-command="cleanup-disconnected">끊긴 Claude/Codex 정리</button>' +
+            '<button data-command="cleanup-records">완료·실패 기록 정리</button>' +
+            '<button data-command="show-idle">안 쓰는 대기 세션 확인</button>';
+          sm.style.display = 'block';
+          positionPopup(sm, clientX, clientY);
+          focusFirstButton(sm);
+          return;
+        }
         const buttons = b.command
           ? [{ command: b.command, label: b.command === 'codex' ? '⚔ Codex 시작' : '🧙 Claude 시작' }]
           : [
@@ -5372,6 +6791,81 @@
         sessionmenuFor = null;
         sm.style.display = 'none';
         if (wasOpen) restoreFocus();
+      }
+
+      async function cleanupDisconnectedSessions() {
+        const controllable = agents.filter((a) => Number.isFinite(Number(a.pid)));
+        if (!controllable.length) return toast('확인할 터미널 세션이 없어요');
+        toast('터미널 연결 상태를 확인하고 있어요');
+        const disconnected = [];
+        let scanErrors = 0;
+        for (let i = 0; i < controllable.length; i += 4) {
+          const batch = controllable.slice(i, i + 4);
+          const results = await Promise.all(
+            batch.map(async (a) => {
+              const pid = Number(a.pid);
+              try {
+                const response = await fetch(API + '/api/screen/' + encodeURIComponent(pid));
+                const data = await response.json();
+                terminalControl.set(pid, data?.ok === true);
+                if (data?.ok === true) {
+                  const raw = data?.screen || data?.text || '';
+                  terminalScreenCache.set(pid, { text: raw, at: Date.now(), via: data?.via || '' });
+                  terminalNeedsInput.set(pid, screenNeedsResponse(raw));
+                  return null;
+                }
+                return a;
+              } catch {
+                scanErrors++;
+                return null;
+              }
+            }),
+          );
+          disconnected.push(...results.filter(Boolean));
+        }
+        layout();
+        if (!disconnected.length) {
+          return toast(scanErrors ? '연결 확인에 실패했어요. 서버 상태를 확인하세요' : '끊긴 터미널 세션이 없어요');
+        }
+        const preview = disconnected
+          .slice(0, 6)
+          .map((a) => '• ' + sessionDisplayTitle(a))
+          .join('\n');
+        const extra = disconnected.length > 6 ? '\n외 ' + (disconnected.length - 6) + '개' : '';
+        if (!window.confirm(
+          '터미널 연결이 끊긴 세션 ' + disconnected.length + '개를 정리할까요?\n\n' +
+          preview + extra + '\n\n남은 프로세스가 있으면 해당 PID만 종료하고 트랜스크립트 기록을 영구 삭제합니다.',
+        )) return;
+
+        let deleted = 0;
+        let skipped = 0;
+        for (const a of disconnected) {
+          const pid = Number(a.pid);
+          try {
+            await apiPost('/api/kill', { pid });
+          } catch {}
+          await new Promise((resolve) => setTimeout(resolve, 350));
+          try {
+            let response = await fetch(API + '/api/agents/' + encodeURIComponent(a.id), { method: 'DELETE' });
+            let result = await response.json();
+            if (!result.ok && response.status === 409) {
+              await new Promise((resolve) => setTimeout(resolve, 700));
+              response = await fetch(API + '/api/agents/' + encodeURIComponent(a.id), { method: 'DELETE' });
+              result = await response.json();
+            }
+            if (result.ok) {
+              deleted++;
+              stashedIds.add(a.id);
+            } else {
+              skipped++;
+            }
+          } catch {
+            skipped++;
+          }
+        }
+        if (deleted) agents = agents.filter((a) => !stashedIds.has(a.id));
+        layout();
+        toast(deleted + '개 정리 완료' + (skipped ? ' · ' + skipped + '개는 안전상 건너뜀' : ''));
       }
       async function openTerminalSession(b, command, replacedAgent = null) {
         if (!b.cwd) return toast('폴더를 알 수 없어 시작할 수 없어요');
@@ -5401,7 +6895,27 @@
         const target = sessionmenuFor;
         const command = b.dataset.command;
         closeSessionMenu();
-        openTerminalSession(target, command);
+        if (command === 'cleanup-disconnected') {
+          cleanupDisconnectedSessions();
+        } else if (command === 'cleanup-records') {
+          let cleaned = 0;
+          for (const a of agents) {
+            if (a.state === 'done' || a.state === 'failed' || !Number.isFinite(Number(a.pid))) {
+              if (!stashedIds.has(a.id)) cleaned++;
+              stashedIds.add(a.id);
+            }
+          }
+          layout();
+          toast(cleaned ? cleaned + '개 기록을 정리했어요' : '정리할 기록이 없어요');
+        } else if (command === 'show-idle') {
+          sessionFilter = '대기';
+          sessionPanelVisible = true;
+          syncSessionPanel();
+          renderSessionPanel();
+          toast('대기 세션만 모았어요. 확인 후 개별 종료하세요');
+        } else {
+          openTerminalSession(target, command);
+        }
       });
 
       // ── 입력 ─────────────────────────────────────────────────────────────
@@ -5434,6 +6948,7 @@
       });
       reconnectButtonEl.addEventListener('click', () => {
         agents = [];
+        lastAgentRenderSignature = '';
         toast('대시보드 서버에 다시 연결하고 있어요');
         connectSSE();
       });
@@ -5442,14 +6957,29 @@
       helpPanelEl.addEventListener('click', (e) => {
         if (e.target === helpPanelEl) closeHelp();
       });
+      responseConfirmEl.addEventListener('click', (e) => {
+        const action = e.target.closest('button[data-response-confirm]')?.dataset.responseConfirm;
+        if (action === 'submit') closeResponseConfirm(true);
+        else if (action === 'cancel' || e.target === responseConfirmEl) closeResponseConfirm(false);
+      });
       // 렌더 루프와 무관하게 좌표로 직접 캐릭터 판정 (클릭 타이밍 이슈 방지)
       function hitTestAll(cx, cy) {
         const my = cy + scrollY;
         const hits = [];
         const currentPositions = separatedMemberPositions(latestT);
+        const bubbleIds = new Set();
+        for (const m of members) if (needsResponse(m.a)) bubbleIds.add(m.a.id);
         for (const m of members) {
           const pos = currentPositions.get(m);
-          if (cx >= pos.x - 44 && cx <= pos.x + 44 && my >= pos.y - 88 && my <= pos.y + 18) {
+          const spriteTop = jobAtlasReady ? pos.y - JOB_RENDER_SIZE * 0.91 : pos.y - SPR_H;
+          const callY = spriteTop - 76;
+          const callW = 116;
+          const viewportLeft = window.innerWidth >= 900 ? 334 : 0;
+          const callX = Math.max(viewportLeft + callW / 2 + 6, Math.min(window.innerWidth - callW / 2 - 6, pos.x));
+          const hitCharacter = cx >= pos.x - 44 && cx <= pos.x + 44 && my >= pos.y - 88 && my <= pos.y + 18;
+          const hitBubble =
+            bubbleIds.has(m.a.id) && cx >= callX - callW / 2 && cx <= callX + callW / 2 && my >= callY - 24 && my <= callY + 29;
+          if (hitCharacter || hitBubble) {
             const centerY = pos.y - 38;
             hits.push({ m, distance: Math.hypot(cx - pos.x, (my - centerY) * 0.8) });
           }
@@ -5458,6 +6988,24 @@
       }
       function hitTest(cx, cy) {
         return hitTestAll(cx, cy)[0] || null;
+      }
+      function hitTestHandoffAgent(cx, cy) {
+        const my = cy + scrollY;
+        for (const h of handoffs) {
+          const actorY = h.y + 18;
+          const responseAgent = h.claudeNeedsResponse ? h.claude : h.codexNeedsResponse ? h.codex : null;
+          const candidates = [
+            { a: h.claude, x: h.x + 42 },
+            { a: h.codex, x: h.x + 154 },
+          ];
+          for (const candidate of candidates) {
+            if (pidOf(candidate.a) == null) continue;
+            if (cx >= candidate.x - 34 && cx <= candidate.x + 34 && my >= actorY - 78 && my <= actorY + 34) {
+              return responseAgent && pidOf(responseAgent) != null ? responseAgent : candidate.a;
+            }
+          }
+        }
+        return null;
       }
       function hitBuilding(cx, cy) {
         const my = cy + scrollY;
@@ -5480,9 +7028,14 @@
         }
         const hits = hitTestAll(e.clientX, e.clientY);
         const m = hits[0] || null;
+        const handoffAgent = hitTestHandoffAgent(e.clientX, e.clientY);
         const b = hitBuilding(e.clientX, e.clientY);
         if (hits.length > 1) openMemberPicker(hits, e.clientX, e.clientY);
         else if (m) openAgentInteraction(m, e.clientX, e.clientY);
+        else if (handoffAgent) {
+          openControlPanel(handoffAgent);
+          readAgentScreen(handoffAgent);
+        }
         else if (b) openSessionMenu(b, e.clientX, e.clientY);
         else {
           closeJobMenu();
@@ -5507,11 +7060,16 @@
       cv.addEventListener('pointerup', endPointerDrag);
       cv.addEventListener('pointercancel', endPointerDrag);
       window.addEventListener('wheel', (e) => {
+        const uiScroller = e.target instanceof Element
+          ? e.target.closest('#controlPanel, #sessionPanel, #helpPanel, #responseConfirm, #jobmenu, #sessionmenu')
+          : null;
+        if (uiScroller) return;
         scrollY = Math.max(0, Math.min(Math.max(0, contentH - window.innerHeight + 40), scrollY + e.deltaY));
       });
       window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-          if (helpPanelEl.classList.contains('open')) closeHelp();
+          if (responseConfirmEl.classList.contains('open')) closeResponseConfirm(false);
+          else if (helpPanelEl.classList.contains('open')) closeHelp();
           else if (controlPanelFor) closeControlPanel();
           else {
             closeJobMenu();
@@ -5524,7 +7082,13 @@
           return;
         }
         if (e.key === 'Tab') {
-          const modal = helpPanelEl.classList.contains('open') ? helpPanelEl : controlPanelFor ? controlPanelEl : null;
+          const modal = responseConfirmEl.classList.contains('open')
+            ? responseConfirmEl
+            : helpPanelEl.classList.contains('open')
+              ? helpPanelEl
+              : controlPanelFor
+                ? controlPanelEl
+                : null;
           if (modal) {
             const focusable = [...modal.querySelectorAll('button:not([disabled]), textarea:not([disabled]), input:not([disabled]), a[href]')];
             if (focusable.length) {
